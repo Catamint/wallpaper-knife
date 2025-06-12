@@ -52,10 +52,27 @@ def main():
                 print("未知命令，请重试。")
     else:
         # GUI模式
-        root = tk.Tk()
-        root.geometry("800x600")
-        app = WallpaperTkApp(root, wallpaper_manager, file_utils, image_utils, realesrgan_tool)
-        root.mainloop()
+        if config.UI == 'tk':
+            # Tkinter 界面
+            import tkinter as tk
+            from ui.tk_app import WallpaperTkApp
+            
+            root = tk.Tk()
+            root.geometry("800x600")
+            app = WallpaperTkApp(root, wallpaper_manager, file_utils, image_utils, realesrgan_tool)
+            root.mainloop()
+        else:
+            # PyQt6 界面
+            from PyQt6.QtWidgets import QApplication
+            from ui.qt_app import WallpaperQtApp
+            
+            app = QApplication(sys.argv)
+            app.setStyle('Fusion')  # 使用Fusion风格基础
+            
+            window = WallpaperQtApp(wallpaper_manager, file_utils, image_utils, realesrgan_tool)
+            window.show()
+            
+            sys.exit(app.exec())
 
 if __name__ == "__main__":
     main()

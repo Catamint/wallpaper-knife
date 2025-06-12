@@ -8,6 +8,7 @@ class Config:
         self.CACHE_DIR = os.path.join(self.BASE_DIR, 'wallpaper_cache')
         self.EXCLUDE_FILE = os.path.join(self.BASE_DIR, 'excluded.txt')
         self.REALESRGAN_PATH = os.path.join(self.BASE_DIR, "tools", "realesrgan", "realesrgan-ncnn-vulkan.exe")
+        self.UI = 'qt'
         
         # 确保目录存在
         os.makedirs(self.CACHE_DIR, exist_ok=True)
