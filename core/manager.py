@@ -4,6 +4,9 @@ import random
 import ctypes
 import threading
 import time
+import base64
+from io import BytesIO
+from PIL import Image  # 使用 Pillow 处理图像
 
 class WallpaperManager:
     def __init__(self, config, file_utils):
@@ -18,8 +21,41 @@ class WallpaperManager:
         self.wallpaper_setter_thread = None
         self.wallpaper_setter_event = threading.Event()
         
+    def _create_thumbnail_base64(self, image_path, max_size=(120, 120)):
+        """创建图片的缩略图并返回base64编码
+        
+        Args:
+            image_path: 图片路径
+            max_size: 缩略图最大尺寸 (宽, 高)
+            
+        Returns:
+            str: base64编码的缩略图，失败返回None
+        """
+        try:
+            # 打开图像
+            with Image.open(image_path) as img:
+                # 调整图像大小，保持宽高比
+                img.thumbnail(max_size, Image.LANCZOS)
+                
+                # 转换为RGB模式 (处理RGBA等格式)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                # 保存到内存缓冲区
+                buffer = BytesIO()
+                img.save(buffer, format='JPEG', quality=85)
+                buffer.seek(0)
+                
+                # 转换为base64
+                img_base64 = base64.b64encode(buffer.read()).decode('utf-8')
+                return img_base64
+                
+        except Exception as e:
+            print(f"创建缩略图失败: {image_path}, 错误: {e}")
+            return None
+    
     def build_index(self, progress_callback=None):
-        """构建壁纸索引，支持子目录，使用哈希值作为键"""
+        """构建壁纸索引，不立即生成缩略图"""
         if not os.path.exists(self.config.WALLPAPER_DIR):
             return False
             
@@ -67,36 +103,33 @@ class WallpaperManager:
                         existing_data["path"] = filepath
                         existing_data["relative_path"] = rel_path
                         break
-                
-                # 构建新的键名，使用哈希值前12位+文件名
-                filename = os.path.basename(filepath)
-                key = f"{file_hash[:12]}_{filename}"
-                
-                if existing_data:
-                    # 继承旧属性
-                    new_wallpapers[key] = existing_data
-                    # 如果旧键与新键不同，记录映射关系
-                    if old_key and old_key != key and "cache_path" in existing_data:
-                        # 这里可以更新引用 old_key 的缓存路径
-                        pass
-                        
-                    # 验证缓存文件是否存在
-                    if existing_data.get("cache_path"):
-                        cache_full_path_file = os.path.join(self.config.CACHE_DIR, existing_data["cache_path"])
-                        if not os.path.exists(cache_full_path_file):
-                            existing_data["cache_path"] = None
-                            existing_data["crop_region"] = None
-                else:
-                    # 新文件
-                    new_wallpapers[key] = {
-                        "hash": file_hash,
-                        "path": filepath,
-                        "relative_path": rel_path,
-                        "display_name": filename,  # 添加显示名
-                        "crop_region": None,
-                        "cache_path": None
-                    }
-        
+            
+            # 构建新的键名，使用哈希值前12位+文件名
+            filename = os.path.basename(filepath)
+            key = f"{file_hash[:12]}_{filename}"
+            
+            if existing_data:
+                # 继承旧属性
+                new_wallpapers[key] = existing_data
+                # 验证缓存文件是否存在
+                if existing_data.get("cache_path"):
+                    cache_full_path_file = os.path.join(self.config.CACHE_DIR, existing_data["cache_path"])
+                    if not os.path.exists(cache_full_path_file):
+                        existing_data["cache_path"] = None
+                        existing_data["crop_region"] = None
+            else:
+                # 新文件 - 不立即生成缩略图
+                new_wallpapers[key] = {
+                    "hash": file_hash,
+                    "path": filepath,
+                    "relative_path": rel_path,
+                    "display_name": filename,
+                    "crop_region": None,
+                    "cache_path": None,
+                    "view_pic": None,  # 初始为None，按需加载
+                    "excluded": False,
+                }
+    
         self.index_data["wallpapers"] = new_wallpapers
         self.index_data["total_count"] = len(new_wallpapers)
         self.index_data["last_updated"] = os.path.getmtime(self.config.WALLPAPER_DIR)
@@ -165,3 +198,24 @@ class WallpaperManager:
                 ctypes.windll.user32.SystemParametersInfoW(20, 0, image_path, 3)
             except Exception as e:
                 print(f"设置壁纸失败: {e}")
+    
+    def get_thumbnail_base64(self, filename):
+        """获取壁纸缩略图的base64编码，如果不存在则生成"""
+        if filename not in self.index_data["wallpapers"]:
+            return None
+        
+        wallpaper = self.index_data["wallpapers"][filename]
+        
+        # 如果已有缩略图，直接返回
+        if wallpaper.get("view_pic"):
+            return wallpaper["view_pic"]
+        
+        # 否则生成缩略图
+        image_path = wallpaper["path"]
+        thumbnail = self._create_thumbnail_base64(image_path)
+        
+        # 更新索引并保存
+        wallpaper["view_pic"] = thumbnail
+        self.save_index()
+        
+        return thumbnail
