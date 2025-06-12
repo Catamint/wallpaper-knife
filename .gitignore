@@ -1,0 +1,9 @@
+.venv/
+wallpaper_cache/
+realesrgan/
+__pycache__/
+*.pyc
+*.json
+
+# Except this file
+!.gitignore
