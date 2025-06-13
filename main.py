@@ -25,8 +25,6 @@ def main():
     # 初始化核心组件
     config = Config()  # 这将加载settings.json
     file_utils = FileUtils(config)
-    image_utils = ImageUtils(config)
-    realesrgan_tool = RealesrganTool(config)
     wallpaper_manager = WallpaperManager(config, file_utils)
     
     # 设置随机种子
@@ -50,7 +48,9 @@ def main():
         app = QApplication(sys.argv)
         
         # 创建MVC组件
-        model = WallpaperModel(wallpaper_manager, file_utils)
+        model = WallpaperModel(wallpaper_manager)
+        image_utils = ImageUtils(config)
+        realesrgan_tool = RealesrganTool(config)
         controller = WallpaperController(model, image_utils, realesrgan_tool)
         view = WallpaperMainWindow(controller)
         

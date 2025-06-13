@@ -21,7 +21,8 @@ class Config:
                     "ui_framework": "qt",
                     "language": "zh_CN",
                     "theme": "light",
-                    "auto_start": False
+                    "auto_start": False,
+                    "random_on_startup": True,  # 启动时随机选择壁纸
                 },
                 "directories": {
                     "wallpaper": os.path.join(os.path.expanduser("~"), "Pictures", "Wallpapers"),
@@ -41,7 +42,8 @@ class Config:
                 "display": {
                     "wallpaper_change_interval": 0,
                     "show_notifications": True,
-                    "enable_animations": True
+                    "enable_animations": True,
+                    "random_interval": 0,       # 随机切换壁纸的间隔(分钟)，0表示禁用
                 },
                 "gallery": {
                     "thumbnail_size": 180,
