@@ -1,6 +1,7 @@
 from PyQt6.QtCore import QObject, pyqtSignal
 import random
 import os
+from typing import Callable
 from core.manager import WallpaperManager
 
 class WallpaperModel(QObject):
@@ -96,6 +97,9 @@ class WallpaperModel(QObject):
             pic = self.manager.index.get_picture(key)
             if pic:
                 result[key] = pic.to_dict()
+    
+        # 调试信息
+        print(f"模型返回的壁纸数量: {len(result)}")
         return result
     
     def get_excluded_wallpapers(self):
@@ -199,13 +203,25 @@ class WallpaperModel(QObject):
             self._update_filtered_keys()
         return result
     
-    def build_index(self):
+    def build_index(self, progress_callback: Callable = None) -> bool:
         """构建索引"""
         self.indexingStarted.emit()
         
-        # 创建进度回调函数
-        def progress_callback(current, total, filename):
-            self.indexingProgress.emit(current, total, filename)
+        # 如果没有提供回调，使用内部回调函数
+        if not progress_callback:
+            # 创建进度回调函数
+            def internal_callback(current, total, filename):
+                self.indexingProgress.emit(current, total, filename)
+            progress_callback = internal_callback
+        else:
+            # 包装外部回调函数，使其也发出信号
+            original_callback = progress_callback
+            def wrapped_callback(current, total, filename):
+                # 发出信号
+                self.indexingProgress.emit(current, total, filename)
+                # 调用原始回调
+                original_callback(current, total, filename)
+            progress_callback = wrapped_callback
         
         # 调用管理器构建索引
         success = self.manager.build_index(progress_callback)
@@ -328,3 +344,21 @@ class WallpaperModel(QObject):
     def get_total_count(self):
         """获取壁纸总数"""
         return self.manager.index.total_count
+        
+    def get_wallpaper(self, key):
+        """获取指定键的壁纸信息
+        
+        Args:
+            key (str): 壁纸的唯一标识符
+            
+        Returns:
+            dict: 壁纸信息字典，若不存在则返回None
+        """
+        if not key:
+            return None
+            
+        pic = self.manager.index.get_picture(key)
+        if not pic:
+            return None
+            
+        return pic.to_dict()

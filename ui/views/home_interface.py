@@ -7,7 +7,7 @@ import os  # 确保导入os模块
 from qfluentwidgets import (FluentWindow, FluentIcon as FIF, NavigationItemPosition,
                           ToolButton, PrimaryPushButton, TransparentToolButton, 
                           SwitchButton, ComboBox, SubtitleLabel, CaptionLabel, 
-                          setTheme, Theme, InfoBar, InfoBarPosition)
+                          setTheme, Theme, InfoBar, InfoBarPosition,PrimaryToolButton)
 
 from .crop_view import CropGraphicsView
 
@@ -26,35 +26,29 @@ class HomeInterface(QFrame):
     def setup_ui(self):
         """设置主页界面"""
         layout = QVBoxLayout(self)
+        # layout.setContentsMargins(0, 0, 0, 0)
+        # layout.setSpacing(0)
         
-        # 顶部标题区域
-        title_layout = QHBoxLayout()
+        # # 顶部标题区域
+        # title_layout = QHBoxLayout()
         
-        # 标题
-        title_label = SubtitleLabel("壁纸预览")
-        title_layout.addWidget(title_label)
+        # # 标题
+        # title_label = SubtitleLabel("壁纸预览")
+        # title_layout.addWidget(title_label)
         
-        # 顶部间隔
-        title_layout.addStretch(1)
+        # # 顶部间隔
+        # title_layout.addStretch(1)
         
-        # 按钮区域
-        action_layout = QHBoxLayout()
-        action_layout.setSpacing(8)
+
         
-        # 随机壁纸按钮
-        self.random_button = PrimaryPushButton("随机壁纸")
-        self.random_button.setIcon(FIF.CAFE)
-        self.random_button.clicked.connect(self.safe_random_wallpaper)
-        action_layout.addWidget(self.random_button)
+        # # 设为壁纸按钮
+        # self.apply_button = PrimaryPushButton("设为壁纸")
+        # self.apply_button.setIcon(FIF.ACCEPT)
+        # self.apply_button.clicked.connect(self.safe_set_wallpaper)
+        # action_layout.addWidget(self.apply_button)
         
-        # 设为壁纸按钮
-        self.apply_button = PrimaryPushButton("设为壁纸")
-        self.apply_button.setIcon(FIF.ACCEPT)
-        self.apply_button.clicked.connect(self.safe_set_wallpaper)
-        action_layout.addWidget(self.apply_button)
-        
-        title_layout.addLayout(action_layout)
-        layout.addLayout(title_layout)
+        # title_layout.addLayout(action_layout)
+        # layout.addLayout(title_layout)
         
         # 图像显示区域
         self.image_view = CropGraphicsView()
@@ -63,11 +57,24 @@ class HomeInterface(QFrame):
         
         # 底部控制栏
         bottom_layout = QHBoxLayout()
-        
+
+        # 应用裁剪按钮
+        self.crop_button = PrimaryPushButton("应用裁剪")
+        self.crop_button.setIcon(FIF.CUT)
+        self.crop_button.setToolTip("应用裁剪")
+        self.crop_button.clicked.connect(self.on_apply_crop)
+        bottom_layout.addWidget(self.crop_button)
+
         # 导航按钮组
         nav_layout = QHBoxLayout()
         nav_layout.setSpacing(8)
         
+        # 随机壁纸按钮
+        self.random_button = PrimaryToolButton(FIF.CAFE)
+        self.random_button.setToolTip("随机壁纸")
+        self.random_button.clicked.connect(self.safe_random_wallpaper)
+        nav_layout.addWidget(self.random_button)
+
         # 上一张按钮
         self.prev_button = ToolButton(FIF.LEFT_ARROW)
         self.prev_button.setIconSize(QSize(20, 20))
@@ -76,27 +83,21 @@ class HomeInterface(QFrame):
         nav_layout.addWidget(self.prev_button)
         
         # 下一张按钮
-        self.next_button = ToolButton(FIF.CHEVRON_RIGHT)
+        self.next_button = ToolButton(FIF.RIGHT_ARROW)
         self.next_button.setIconSize(QSize(20, 20))
         self.next_button.setToolTip("下一张壁纸")
         self.next_button.clicked.connect(self.safe_next_wallpaper)
         nav_layout.addWidget(self.next_button)
-        
+
         # 排除当前按钮
         self.exclude_button = TransparentToolButton(FIF.CANCEL)
         self.exclude_button.setToolTip("排除当前壁纸")
         self.exclude_button.clicked.connect(self.safe_exclude_wallpaper)
         nav_layout.addWidget(self.exclude_button)
-        
-        # 应用裁剪按钮
-        self.crop_button = TransparentToolButton(FIF.CUT)
-        self.crop_button.setToolTip("应用裁剪")
-        self.crop_button.clicked.connect(self.on_apply_crop)
-        nav_layout.addWidget(self.crop_button)
-        
+
         bottom_layout.addLayout(nav_layout)
         bottom_layout.addStretch(1)
-        
+
         # 当前壁纸信息
         self.info_label = QLabel("正在加载壁纸...")
         self.info_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)

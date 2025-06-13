@@ -50,6 +50,10 @@ class Config:
                     "items_per_row": 0,
                     "default_sort": "filename",
                     "show_excluded": True
+                },
+                "tray": {
+                    "minimize_on_auto_start": True,
+                    "minimize_on_close": True
                 }
             }
             
@@ -243,6 +247,10 @@ class Config:
         self.ITEMS_PER_ROW = self.settings["gallery"]["items_per_row"]
         self.DEFAULT_SORT = self.settings["gallery"]["default_sort"]
         self.SHOW_EXCLUDED = self.settings["gallery"]["show_excluded"]
+        
+        # 托盘设置
+        self.MINIMIZE_ON_AUTO_START = self.settings.get("tray", {}).get("minimize_on_auto_start", True)
+        self.MINIMIZE_ON_CLOSE = self.settings.get("tray", {}).get("minimize_on_close", True)
         
         # 确保必要目录存在
         os.makedirs(self.WALLPAPER_DIR, exist_ok=True)

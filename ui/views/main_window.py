@@ -1,6 +1,6 @@
 from PyQt6.QtCore import Qt, pyqtSlot, QSize, pyqtSignal
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QColor
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QSizePolicy
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QSizePolicy, QApplication, QSystemTrayIcon
 import os  # 添加导入os模块
 
 # 导入QFluentWidgets组件
@@ -13,6 +13,9 @@ from .crop_view import CropGraphicsView
 from .home_interface import HomeInterface
 from .gallery_interface import GalleryInterface
 from .settings_interface import SettingsInterface
+
+# 导入托盘类
+from .tray_icon import SystemTrayIcon
 
 class WallpaperMainWindow(FluentWindow):
     """使用QFluentWidgets的壁纸管理主窗口"""
@@ -31,6 +34,9 @@ class WallpaperMainWindow(FluentWindow):
         
         self.initNavigation()
         self.initWindow()
+        
+        # 设置托盘图标
+        self.setup_tray_icon()
     
     def connect_signals(self):
         """连接各界面的信号"""
@@ -91,7 +97,7 @@ class WallpaperMainWindow(FluentWindow):
     def initWindow(self):
         """初始化窗口"""
         self.setWindowTitle("壁纸管理器")
-        self.resize(1000, 650)
+        self.resize(900, 600)
         
         # 根据系统主题设置初始主题
         self.load_theme()
@@ -172,6 +178,35 @@ class WallpaperMainWindow(FluentWindow):
         self.settingsInterface.load_settings_values()
         self.stackedWidget.setCurrentWidget(self.settingsInterface)
     
+    def setup_tray_icon(self):
+        """设置系统托盘图标"""
+        app_icon = QIcon("app_icon.png")  # 替换为你的应用图标路径
+        self.tray_icon = SystemTrayIcon(app_icon, self)
+        
+        # 连接信号
+        self.tray_icon.showMainWindow.connect(self.show_from_tray)
+        self.tray_icon.exitApp.connect(self.exit_application)
+        self.tray_icon.nextWallpaper.connect(self.next_wallpaper)
+        
+        # 显示托盘图标
+        self.tray_icon.show()
+    
+    def show_from_tray(self):
+        """从托盘图标显示窗口"""
+        self.showNormal()
+        self.activateWindow()
+    
+    def exit_application(self):
+        """退出应用程序"""
+        if hasattr(self.controller, 'cleanup'):
+            self.controller.cleanup()
+        QApplication.quit()
+    
+    def next_wallpaper(self):
+        """切换到下一张壁纸"""
+        if hasattr(self.controller, 'next_wallpaper'):
+            self.controller.next_wallpaper()
+    
     def statusBar(self):
         """提供兼容层以支持传统的statusBar().showMessage()调用"""
         class StatusBarCompat:
@@ -184,3 +219,24 @@ class WallpaperMainWindow(FluentWindow):
                     self.window.homeInterface.info_label.setText(message)
                     
         return StatusBarCompat(self)
+    
+    def closeEvent(self, event):
+        """重写关闭事件，实现最小化到托盘"""
+        if hasattr(self, 'tray_icon') and self.tray_icon.isVisible():
+            # 如果托盘图标存在并可见，最小化到托盘
+            self.hide()
+            
+            # 显示通知
+            if self.controller.model.manager.config.SHOW_NOTIFICATIONS:
+                self.tray_icon.showMessage(
+                    "壁纸管理器",
+                    "应用程序已最小化到系统托盘，点击图标恢复。",
+                    QSystemTrayIcon.MessageIcon.Information,
+                    2000
+                )
+            
+            # 阻止应用关闭
+            event.ignore()
+        else:
+            # 否则执行默认的关闭操作
+            super().closeEvent(event)

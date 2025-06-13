@@ -1,5 +1,7 @@
 from PyQt6.QtCore import QObject, pyqtSlot, QTimer
 import os
+import sys
+import winreg as reg
 from ..views.dialogs import ProgressDialog, show_error, show_info
 import threading, time
 import random
@@ -197,9 +199,19 @@ class WallpaperController(QObject):
         # 获取所有壁纸数据 (包括已排除)
         wallpaper_data = self.model.get_all_wallpapers()
         
+        # 调试输出
+        print(f"获取到的壁纸数据: {len(wallpaper_data)} 条")
+        if len(wallpaper_data) > 0:
+            print(f"数据示例: {list(wallpaper_data.keys())[0]}")
+        else:
+            print("壁纸数据为空")
+        
         # 通知视图打开图库
         if hasattr(self.view, "show_gallery"):
             self.view.show_gallery(wallpaper_data)
+
+        # if hasattr(self.view, "galleryInterface"):
+        #     self.view.galleryInterface.set_data(wallpaper_data)
 
     @pyqtSlot(str)
     @pyqtSlot()  # 添加一个无参数的重载
@@ -217,29 +229,37 @@ class WallpaperController(QObject):
             # 排除指定壁纸
             if self.model.exclude_wallpaper(key):
                 from os.path import basename
-                info = self.model.get_wallpaper_info(key)
-                name = basename(info["path"]) if info else key
-                show_info(self.view, "已排除", f"壁纸 {name} 已被排除")
+                # 使用正确的方法获取壁纸信息
+                key_info = self.model.get_wallpaper(key)  # 修改这里
+                if key_info:
+                    name = basename(key_info.get("path", key))
+                else:
+                    name = key
+                # show_info(self.view, "已排除", f"壁纸 {name} 已被排除")
     
     @pyqtSlot(str)
     def include_wallpaper(self, key):
         """恢复被排除的壁纸"""
         if self.model.include_wallpaper(key):
             from os.path import basename
-            info = self.model.get_wallpaper_info(key)
-            name = basename(info["path"]) if info else key
-            show_info(self.view, "已恢复", f"壁纸 {name} 已恢复使用")
+            # 使用正确的方法获取壁纸信息
+            key_info = self.model.get_wallpaper(key)  # 修改这里
+            if key_info:
+                name = basename(key_info.get("path", key))
+            else:
+                name = key
+            # show_info(self.view, "已恢复", f"壁纸 {name} 已恢复使用")
 
     @pyqtSlot(str)
     def select_wallpaper_from_gallery(self, key):
         """从图库中选择壁纸"""
         # 检查壁纸是否存在
-        info = self.model.get_wallpaper_info(key)
-        if not info:
+        key_info = self.model.get_wallpaper(key)  # 修改这里
+        if not key_info:
             return
         
         # 如果壁纸被排除，则首先恢复它
-        if info.get("excluded", False):
+        if key_info.get("excluded", False):
             self.model.include_wallpaper(key)
         
         # 设置为当前壁纸
@@ -247,7 +267,7 @@ class WallpaperController(QObject):
             # 关闭图库视图
             if hasattr(self.view, "close_gallery"):
                 self.view.close_gallery()
-    
+
     def generate_thumbnails_batch(self, batch_size=40):
         """分批生成缩略图"""
         # 获取所有没有缩略图的壁纸
@@ -300,6 +320,49 @@ class WallpaperController(QObject):
             return thumbnail is not None
         return False
     
+    def set_auto_start(self, enabled):
+        """设置开机自启动
+        
+        Args:
+            enabled (bool): 是否启用自启动
+        """
+        try:
+            # 获取程序路径
+            app_path = os.path.abspath(sys.argv[0])
+            
+            # 如果是 Python 脚本，转换为可执行格式
+            if app_path.endswith('.py'):
+                # 使用 pythonw.exe 来运行，避免显示控制台
+                python_exe = sys.executable.replace('python.exe', 'pythonw.exe')
+                app_path = f'"{python_exe}" "{app_path}"'
+            
+            # 注册表路径
+            reg_path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+            
+            # 打开注册表项
+            with reg.OpenKey(reg.HKEY_CURRENT_USER, reg_path, 0, reg.KEY_SET_VALUE) as key:
+                if enabled:
+                    # 设置自启动
+                    reg.SetValueEx(key, "WallpaperManager", 0, reg.REG_SZ, app_path)
+                    print(f"已设置自启动: {app_path}")
+                else:
+                    # 尝试删除自启动项
+                    try:
+                        reg.DeleteValue(key, "WallpaperManager")
+                        print("已删除自启动设置")
+                    except FileNotFoundError:
+                        # 如果键不存在就忽略
+                        pass
+                
+            return True
+        
+        except Exception as e:
+            print(f"设置自启动时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
+    @pyqtSlot()
     def settings_changed(self):
         """响应设置更改"""
         # 重新加载壁纸列表 (如果壁纸目录改变了)
@@ -318,6 +381,10 @@ class WallpaperController(QObject):
                 self.auto_change_timer.start(interval * 60 * 1000)
             else:
                 self.auto_change_timer.stop()
+        
+        # 应用自启动设置
+        if hasattr(config, 'AUTO_START'):
+            self.set_auto_start(config.AUTO_START)
         
         if self.view and hasattr(self.view, "statusBar"):
             self.view.statusBar().showMessage("设置已应用", 3000)
@@ -353,3 +420,31 @@ class WallpaperController(QObject):
     def get_wallpaper_info(self, key):
         """获取壁纸信息"""
         return self.model.get_wallpaper_info(key)
+
+    @pyqtSlot()
+    def refresh_gallery(self):
+        """刷新图库"""
+        # 重新获取壁纸数据
+        wallpaper_data = self.model.get_all_wallpapers()
+        
+        # 检查是否有数据
+        if not wallpaper_data:
+            # # 尝试重建索引
+            # if self.view and hasattr(self.view, "statusBar"):
+            #     self.view.statusBar().showMessage("正在重建索引...")
+                
+            # success = self.model.build_index()
+            
+            # if success:
+            #     # 重新获取数据
+            #     wallpaper_data = self.model.get_all_wallpapers()
+            #     if self.view and hasattr(self.view, "statusBar"):
+            #         self.view.statusBar().showMessage(f"索引已重建，找到 {len(wallpaper_data)} 张壁纸", 3000)
+            # else:
+            #     if self.view and hasattr(self.view, "statusBar"):
+            #         self.view.statusBar().showMessage("索引重建失败", 3000)
+            print("没有可用的壁纸数据，无法刷新图库")
+            
+        # 更新图库数据
+        if hasattr(self.view, "galleryInterface"):
+            self.view.galleryInterface.set_data(wallpaper_data)

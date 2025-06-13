@@ -15,10 +15,12 @@ class CropGraphicsView(QGraphicsView):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.scene = QGraphicsScene(self)
+        self.scene.setBackgroundBrush(QColor(0, 0, 0, 0))  # 设置背景为透明
         self.setScene(self.scene)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
         self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-        
+        # 设置背景透明
+        self.setStyleSheet("background: transparent; border: none;")
         # 设置为可交互
         self.setMouseTracking(True)
         self.setInteractive(True)

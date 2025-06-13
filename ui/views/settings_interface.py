@@ -11,7 +11,46 @@ from qfluentwidgets import (FluentWindow, FluentIcon as FIF, NavigationItemPosit
                           SwitchButton, ComboBox, SubtitleLabel, CaptionLabel, 
                           setTheme, Theme, InfoBar, InfoBarPosition, CardWidget, 
                           ScrollArea, ExpandLayout, SettingCardGroup, SwitchSettingCard,
-                          ComboBoxSettingCard, PushSettingCard, LineEdit)
+                          ComboBoxSettingCard, PushSettingCard, LineEdit, 
+                          ConfigItem, QConfig, OptionsConfigItem, OptionsValidator, 
+                          BoolValidator, FolderValidator)
+
+# 创建配置类
+class WallpaperConfig(QConfig):
+    """壁纸管理器配置"""
+    
+    # 常规设置
+    autoStart = ConfigItem("App", "AutoStart", False, BoolValidator())
+    randomOnStartup = ConfigItem("App", "RandomOnStartup", True, BoolValidator())
+    
+    # 目录设置
+    wallpaperDir = ConfigItem("Directories", "WallpaperDir", "./wallpapers", FolderValidator())
+    cacheDir = ConfigItem("Directories", "CacheDir", "./cache", FolderValidator())
+    toolsDir = ConfigItem("Directories", "ToolsDir", "./tools", FolderValidator())
+    
+    # 显示设置
+    notifications = ConfigItem("Display", "ShowNotifications", True, BoolValidator())
+    animations = ConfigItem("Display", "EnableAnimations", True, BoolValidator())
+    
+    # Real-ESRGAN设置
+    realesrganEnabled = ConfigItem("RealESRGAN", "Enabled", False, BoolValidator())
+    realesrganPath = ConfigItem("RealESRGAN", "ExecutablePath", "", FolderValidator())
+    realesrganScale = OptionsConfigItem(
+        "RealESRGAN", "Scale", 2, 
+        OptionsValidator([2, 3, 4])
+    )
+    realesrganModel = OptionsConfigItem(
+        "RealESRGAN", "Model", "realesrgan-x4plus", 
+        OptionsValidator(["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesrnet-x4plus"])
+    )
+    
+    # 托盘设置
+    minimizeOnAutoStart = ConfigItem("Tray", "MinimizeOnAutoStart", True, BoolValidator())
+    minimizeOnClose = ConfigItem("Tray", "MinimizeOnClose", True, BoolValidator())
+
+# 创建全局配置实例
+wallpaperCfg = WallpaperConfig()
+
 
 class SettingsInterface(QFrame):
     """设置界面 - 整合了原SettingsDialog功能"""
@@ -24,8 +63,15 @@ class SettingsInterface(QFrame):
         self.controller = controller
         self.setObjectName("Settings-Interface")
         
+        # 设置透明背景
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        
         # 保存原始设置用于比较
         self.original_settings = None
+        self.config = wallpaperCfg
+        
+        # 加载配置文件
+        self.config.load("config.json")
         
         self.setup_ui()
     
@@ -43,9 +89,27 @@ class SettingsInterface(QFrame):
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.scroll_area.setObjectName("settingsScrollArea")
+        
+        # 设置滚动区域为透明
+        self.scroll_area.setStyleSheet("""
+            QScrollArea#settingsScrollArea {
+                background-color: transparent;
+                border: none;
+            }
+            QScrollArea#settingsScrollArea > QWidget > QWidget {
+                background-color: transparent;
+            }
+        """)
         
         # 创建滚动内容
         self.scroll_content = QWidget()
+        self.scroll_content.setObjectName("settingsContent")
+        
+        # 设置滚动内容为透明
+        self.scroll_content.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.scroll_content.setStyleSheet("#settingsContent { background-color: transparent; }")
+        
         self.scroll_layout = QVBoxLayout(self.scroll_content)
         self.scroll_layout.setContentsMargins(0, 0, 0, 0)
         self.scroll_layout.setSpacing(15)
@@ -104,21 +168,43 @@ class SettingsInterface(QFrame):
         
         # 自动启动
         self.auto_start_card = SwitchSettingCard(
-            FIF.POWER_BUTTON,
-            "开机自动启动",
-            "开机时自动启动应用程序",
+            configItem=self.config.autoStart,
+            icon=FIF.POWER_BUTTON,
+            title="开机自动启动",
+            content="开机时自动启动应用程序",
             parent=general_group
         )
         general_group.addSettingCard(self.auto_start_card)
         
         # 启动时随机选择壁纸
         self.random_startup_card = SwitchSettingCard(
-            FIF.CAFE,
-            "启动时随机选择壁纸",
-            "程序启动时自动随机选择一张壁纸",
+            configItem=self.config.randomOnStartup,
+            icon=FIF.CAFE,
+            title="启动时随机选择壁纸",
+            content="程序启动时自动随机选择一张壁纸",
             parent=general_group
         )
         general_group.addSettingCard(self.random_startup_card)
+        
+        # 开机自启时最小化到托盘
+        self.minimize_startup_card = SwitchSettingCard(
+            configItem=self.config.minimizeOnAutoStart,
+            icon=FIF.MINIMIZE,
+            title="自启时最小化到托盘",
+            content="开机自启时自动最小化到系统托盘",
+            parent=general_group
+        )
+        general_group.addSettingCard(self.minimize_startup_card)
+        
+        # 关闭时最小化到托盘
+        self.minimize_close_card = SwitchSettingCard(
+            configItem=self.config.minimizeOnClose,
+            icon=FIF.CLOSE,
+            title="关闭时最小化到托盘",
+            content="点击关闭按钮时最小化到系统托盘而不是退出程序",
+            parent=general_group
+        )
+        general_group.addSettingCard(self.minimize_close_card)
         
         self.scroll_layout.addWidget(general_group)
     
@@ -177,18 +263,20 @@ class SettingsInterface(QFrame):
         
         # 显示通知
         self.notifications_card = SwitchSettingCard(
-            FIF.CHAT,
-            "显示系统通知",
-            "启用系统通知来显示状态信息",
+            configItem=self.config.notifications,
+            icon=FIF.CHAT,
+            title="显示系统通知",
+            content="启用系统通知来显示状态信息",
             parent=display_group
         )
         display_group.addSettingCard(self.notifications_card)
         
         # 启用动画
         self.animations_card = SwitchSettingCard(
-            FIF.PLAY,
-            "启用界面动画",
-            "启用界面切换和交互动画效果",
+            configItem=self.config.animations,
+            icon=FIF.PLAY,
+            title="启用界面动画",
+            content="启用界面切换和交互动画效果",
             parent=display_group
         )
         display_group.addSettingCard(self.animations_card)
@@ -201,43 +289,46 @@ class SettingsInterface(QFrame):
         
         # 启用超分辨率
         self.realesrgan_enabled_card = SwitchSettingCard(
-            FIF.ZOOM_IN,
-            "启用超分辨率",
-            "使用 Real-ESRGAN 提升图片分辨率",
+            configItem=self.config.realesrganEnabled,
+            icon=FIF.ZOOM_IN,
+            title="启用超分辨率",
+            content="使用 Real-ESRGAN 提升图片分辨率",
             parent=realesrgan_group
         )
         realesrgan_group.addSettingCard(self.realesrgan_enabled_card)
         
         # 可执行文件路径
         self.realesrgan_path_card = PushSettingCard(
-            "选择文件",
-            FIF.DOCUMENT,
-            "可执行文件路径",
-            "Real-ESRGAN 可执行文件的路径",
+            text="选择文件",
+            icon=FIF.DOCUMENT,
+            title="可执行文件路径",
+            content="Real-ESRGAN 可执行文件的路径",
             parent=realesrgan_group
         )
         self.realesrgan_path_card.clicked.connect(self.browse_realesrgan_path)
         realesrgan_group.addSettingCard(self.realesrgan_path_card)
         
-        # # 缩放比例
-        # self.scale_card = ComboBoxSettingCard(
-        #     FIF.ZOOM,
-        #     "缩放比例",
-        #     "图片放大的倍数",
-        #     texts=["2x", "3x", "4x"],
-        #     parent=realesrgan_group
-        # )
-        # realesrgan_group.addSettingCard(self.scale_card)
+        # 缩放比例
+        self.scale_card = ComboBoxSettingCard(
+            configItem=self.config.realesrganScale,
+            icon=FIF.ZOOM,
+            title="缩放比例",
+            content="图片放大的倍数",
+            texts=["2x", "3x", "4x"],
+            parent=realesrgan_group
+        )
+        realesrgan_group.addSettingCard(self.scale_card)
         
         # 模型选择
-        # self.model_card = ComboBoxSettingCard(
-        #     FIF.ROBOT,
-        #     "模型选择",
-        #     "选择使用的 Real-ESRGAN 模型",
-        #     texts=["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesrnet-x4plus"],
-        #     parent=realesrgan_group
-        # )
-        # realesrgan_group.addSettingCard(self.model_card)
+        self.model_card = ComboBoxSettingCard(
+            configItem=self.config.realesrganModel,
+            icon=FIF.ROBOT,
+            title="模型选择",
+            content="选择使用的 Real-ESRGAN 模型",
+            texts=["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesrnet-x4plus"],
+            parent=realesrgan_group
+        )
+        realesrgan_group.addSettingCard(self.model_card)
         
         self.scroll_layout.addWidget(realesrgan_group)
 
@@ -301,12 +392,12 @@ class SettingsInterface(QFrame):
                     theme_index = 1
                 elif config.THEME == "system":
                     theme_index = 2
-            self.theme_card.setCurrentIndex(theme_index)
+            # self.theme_card.setCurrentIndex(theme_index)
             
             lang_index = 0
             if hasattr(config, 'LANGUAGE') and config.LANGUAGE == "en_US":
                 lang_index = 1
-            self.language_card.setCurrentIndex(lang_index)
+            # self.language_card.setCurrentIndex(lang_index)
             
             if hasattr(config, 'AUTO_START'):
                 self.auto_start_card.setChecked(config.AUTO_START)
@@ -333,7 +424,7 @@ class SettingsInterface(QFrame):
             elif interval == 120: interval_index = 5
             elif interval == 240: interval_index = 6
             elif interval == 480: interval_index = 7
-            self.interval_card.setCurrentIndex(interval_index)
+            # self.interval_card.setCurrentIndex(interval_index)
             
             if hasattr(config, 'SHOW_NOTIFICATIONS'):
                 self.notifications_card.setChecked(config.SHOW_NOTIFICATIONS)
@@ -347,22 +438,22 @@ class SettingsInterface(QFrame):
                 self.realesrgan_path_card.setContent(config.REALESRGAN_PATH)
             
             scale_index = max(0, min(getattr(config, 'REALESRGAN_SCALE', 2) - 2, 2))
-            self.scale_card.setCurrentIndex(scale_index)
+            # self.scale_card.setCurrentIndex(scale_index)
             
             model_index = 0
             if hasattr(config, 'REALESRGAN_MODEL'):
                 if config.REALESRGAN_MODEL == "realesrgan-x4plus-anime":
                     model_index = 1
-                elif config.REALESRGAN_MODEL == "realesrnet-x4plus":
+                elif config.REALESRGAN_MODEL == "realesrgnet-x4plus":
                     model_index = 2
-            self.model_card.setCurrentIndex(model_index)
+            # self.model_card.setCurrentIndex(model_index)
             
             # 图库设置
             thumbnail_size = getattr(config, 'THUMBNAIL_SIZE', 200)
-            self.thumbnail_size_card.spinbox.setValue(thumbnail_size)
+            # self.thumbnail_size_card.spinbox.setValue(thumbnail_size)
             
             items_per_row = getattr(config, 'ITEMS_PER_ROW', 0)
-            self.items_per_row_card.spinbox.setValue(items_per_row)
+            # self.items_per_row_card.spinbox.setValue(items_per_row)
             
             default_sort = getattr(config, 'DEFAULT_SORT', 'filename')
             sort_index = 0
@@ -370,10 +461,10 @@ class SettingsInterface(QFrame):
                 sort_index = 1
             elif default_sort == "size":
                 sort_index = 2
-            self.default_sort_card.setCurrentIndex(sort_index)
+            # self.default_sort_card.setCurrentIndex(sort_index)
             
             show_excluded = getattr(config, 'SHOW_EXCLUDED', False)
-            self.show_excluded_card.setChecked(show_excluded)
+            # self.show_excluded_card.setChecked(show_excluded)
             
         except Exception as e:
             print(f"加载设置值时出错: {e}")
@@ -396,13 +487,15 @@ class SettingsInterface(QFrame):
             
             # 常规设置
             theme_values = ["light", "dark", "system"]
-            config.settings["app"]["theme"] = theme_values[self.theme_card.currentIndex()]
+            # config.settings["app"]["theme"] = theme_values[self.theme_card.currentIndex()]
             
             lang_values = ["zh_CN", "en_US"]
-            config.settings["app"]["language"] = lang_values[self.language_card.currentIndex()]
+            # config.settings["app"]["language"] = lang_values[self.language_card.currentIndex()]
             
             config.settings["app"]["auto_start"] = self.auto_start_card.isChecked()
             config.settings["app"]["random_on_startup"] = self.random_startup_card.isChecked()
+            config.settings["app"]["minimize_on_auto_start"] = self.minimize_startup_card.isChecked()
+            config.settings["app"]["minimize_on_close"] = self.minimize_close_card.isChecked()
             
             # 目录设置
             config.settings["directories"]["wallpaper"] = self.wallpaper_dir_card.contentLabel.text()
@@ -411,25 +504,25 @@ class SettingsInterface(QFrame):
             
             # 显示设置
             interval_values = [0, 5, 10, 30, 60, 120, 240, 480]
-            config.settings["display"]["wallpaper_change_interval"] = interval_values[self.interval_card.currentIndex()]
+            # config.settings["display"]["wallpaper_change_interval"] = interval_values[self.interval_card.currentIndex()]
             config.settings["display"]["show_notifications"] = self.notifications_card.isChecked()
             config.settings["display"]["enable_animations"] = self.animations_card.isChecked()
             
             # Real-ESRGAN设置
             config.settings["realesrgan"]["enabled"] = self.realesrgan_enabled_card.isChecked()
             config.settings["realesrgan"]["executable"] = self.realesrgan_path_card.contentLabel.text()
-            config.settings["realesrgan"]["scale"] = self.scale_card.currentIndex() + 2
+            # config.settings["realesrgan"]["scale"] = self.scale_card.currentIndex() + 2
             
             model_values = ["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesrnet-x4plus"]
-            config.settings["realesrgan"]["model"] = model_values[self.model_card.currentIndex()]
+            # config.settings["realesrgan"]["model"] = model_values[self.model_card.currentIndex()]
             
             # 图库设置
-            config.settings["gallery"]["thumbnail_size"] = self.thumbnail_size_card.spinbox.value()
-            config.settings["gallery"]["items_per_row"] = self.items_per_row_card.spinbox.value()
+            # config.settings["gallery"]["thumbnail_size"] = self.thumbnail_size_card.spinbox.value()
+            # config.settings["gallery"]["items_per_row"] = self.items_per_row_card.spinbox.value()
             
             sort_values = ["filename", "date", "size"]
-            config.settings["gallery"]["default_sort"] = sort_values[self.default_sort_card.currentIndex()]
-            config.settings["gallery"]["show_excluded"] = self.show_excluded_card.isChecked()
+            # config.settings["gallery"]["default_sort"] = sort_values[self.default_sort_card.currentIndex()]
+            # config.settings["gallery"]["show_excluded"] = self.show_excluded_card.isChecked()
             
             # 保存设置到文件
             if config.save_settings():
@@ -499,7 +592,9 @@ class SettingsInterface(QFrame):
                         "theme": "light",
                         "language": "zh_CN",
                         "auto_start": False,
-                        "random_on_startup": True
+                        "random_on_startup": True,
+                        "minimize_on_auto_start": True,
+                        "minimize_on_close": True
                     },
                     "directories": {
                         "wallpaper": "./wallpapers",
@@ -552,3 +647,13 @@ class SettingsInterface(QFrame):
             duration=5000,
             parent=self
         )
+    
+    def showEvent(self, event):
+        """在显示设置界面时自动加载配置"""
+        super().showEvent(event)
+        
+        # 初次显示时加载设置值
+        if not hasattr(self, '_settings_loaded') or not self._settings_loaded:
+            print("设置界面: 首次显示，自动加载配置")
+            self.load_settings_values()
+            self._settings_loaded = True

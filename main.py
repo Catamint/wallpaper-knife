@@ -3,6 +3,7 @@ import os
 import argparse
 import random
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QIcon
 
 from core.config import Config
 from core.file_utils import FileUtils
@@ -13,6 +14,7 @@ from tools.realesrgan import RealesrganTool
 from ui.models.wallpaper_model import WallpaperModel
 from ui.controllers.wallpaper_controller import WallpaperController
 from ui.views.main_window import WallpaperMainWindow
+# import icon
 
 def main():
     # 命令行参数
@@ -46,7 +48,7 @@ def main():
     else:
         # GUI模式
         app = QApplication(sys.argv)
-        
+        app.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), 'app_icon.png')))
         # 创建MVC组件
         model = WallpaperModel(wallpaper_manager)
         image_utils = ImageUtils(config)
