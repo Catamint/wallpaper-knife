@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, 
                            QVBoxLayout, QHBoxLayout, QLabel, QSplitter)
 from PyQt6.QtCore import Qt, pyqtSlot
+from PyQt6.QtGui import QAction  # 保留这个导入，可能在其他地方使用到
 
 from .crop_view import CropGraphicsView
 from ..styles.light_theme import LIGHT_THEME
@@ -68,12 +69,19 @@ class WallpaperMainWindow(QMainWindow):
         self.gallery_button.clicked.connect(self.show_gallery_dialog)
         self.button_layout.addWidget(self.gallery_button)
         
+        # 新增设置按钮
+        self.settings_button = QPushButton("设置")
+        self.settings_button.clicked.connect(self.show_settings)
+        self.button_layout.addWidget(self.settings_button)
+        
         self.main_layout.addLayout(self.button_layout)
         
         # 状态栏
         self.status_bar = self.statusBar()
         self.status_label = QLabel("准备中...")
         self.status_bar.addWidget(self.status_label, 1)
+        
+        # 移除菜单栏相关代码
     
     def load_theme(self, dark_mode=False):
         """加载主题"""
@@ -161,3 +169,24 @@ class WallpaperMainWindow(QMainWindow):
         """关闭图库对话框"""
         if hasattr(self, 'gallery_dialog') and self.gallery_dialog:
             self.gallery_dialog.accept()
+    
+    def show_settings(self):
+        """显示设置对话框"""
+        from ..views.settings_dialog import SettingsDialog
+        
+        settings_dialog = SettingsDialog(self.controller.model.manager.config, self)
+        settings_dialog.settingsChanged.connect(self.on_settings_changed)
+        settings_dialog.exec()
+
+    def on_settings_changed(self):
+        """当设置更改时响应"""
+        # 重新加载主题
+        config = self.controller.model.manager.config
+        if hasattr(self, '_is_dark_mode'):
+            self.load_theme(config.THEME == "dark")
+        
+        # 更新动画设置
+        self.enable_animations(config.ENABLE_ANIMATIONS)
+        
+        # 其他可能需要响应设置变化的地方
+        self.controller.settings_changed()

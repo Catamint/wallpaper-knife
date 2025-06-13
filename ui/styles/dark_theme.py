@@ -7,8 +7,8 @@ DARK_THEME = """
         background-color: #323232;
         border: 1px solid #505050;
         border-radius: 5px;
-        padding: 8px 16px;
-        min-width: 80px;
+        # padding: 8px 16px;
+        min-width: 40px;
         color: #e0e0e0;
     }
     QPushButton:hover {

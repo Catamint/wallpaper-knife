@@ -4,6 +4,10 @@ realesrgan/
 __pycache__/
 *.pyc
 *.json
-
+*.spec
+build/
+dist/
+*.zip
+*.exe
 # Except this file
 !.gitignore

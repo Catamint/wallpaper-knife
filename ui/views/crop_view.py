@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsPathItem
-from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF
-from PyQt6.QtGui import QPen, QColor, QBrush, QPainterPath, QPainter
+from PyQt6.QtCore import Qt, pyqtSignal, QRectF, QPointF, QEvent
+from PyQt6.QtGui import QPen, QColor, QBrush, QPainterPath, QPainter, QMouseEvent
 from screeninfo import get_monitors
 
 class CropGraphicsView(QGraphicsView):
@@ -124,7 +124,22 @@ class CropGraphicsView(QGraphicsView):
                 self.crop_rect_item.setZValue(20)  # 确保在遮罩上方
                 self.scene.addItem(self.crop_rect_item)
                 self.setCursor(Qt.CursorShape.CrossCursor)
-    
+        elif event.button() == Qt.MouseButton.MiddleButton:
+            # 中键拖动
+            self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
+            
+            # 创建假的左键点击事件来触发拖动
+            fake_event = QMouseEvent(
+                QEvent.Type.MouseButtonPress,
+                event.pos(),
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier
+            )
+            super().mousePressEvent(fake_event)
+        else:
+            super().mousePressEvent(event)
+
     def mouseMoveEvent(self, event):
         """鼠标移动事件处理"""
         scene_pos = self.mapToScene(event.pos())
@@ -229,6 +244,19 @@ class CropGraphicsView(QGraphicsView):
                 self.setCursor(Qt.CursorShape.SizeAllCursor)
             else:
                 self.setCursor(Qt.CursorShape.CrossCursor)
+        elif event.button() == Qt.MouseButton.MiddleButton:
+            # 中键松开时，创建假的左键松开事件
+            fake_event = QMouseEvent(
+                QEvent.Type.MouseButtonRelease,
+                event.pos(),
+                Qt.MouseButton.LeftButton,
+                Qt.MouseButton.LeftButton,
+                Qt.KeyboardModifier.NoModifier
+            )
+            super().mouseReleaseEvent(fake_event)
+            self.setDragMode(QGraphicsView.DragMode.NoDrag)
+        else:
+            super().mouseReleaseEvent(event)
     
     def clearCropRect(self):
         """清除裁剪矩形"""
@@ -252,3 +280,11 @@ class CropGraphicsView(QGraphicsView):
     def getCropRect(self):
         """获取裁剪矩形"""
         return self.current_rect
+    
+    def wheelEvent(self, event):
+        """滚轮事件：缩放图片"""
+        factor = 1.1
+        if event.angleDelta().y() < 0:
+            factor = 0.9
+            
+        self.scale(factor, factor)

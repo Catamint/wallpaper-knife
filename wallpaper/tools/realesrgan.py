@@ -15,8 +15,7 @@ class RealesrganTool:
             self.config.REALESRGAN_PATH,
             "-i", input_path,
             "-o", output_path,
-            # "--outscale", str(scale_factor),
-            "-n", "realesrgan-x4plus-anime"
+            "-s", str(scale_factor)
         ]
         
         try:
@@ -42,7 +41,7 @@ class RealesrganTool:
         # 需要放大
         scale = int(max(width_ratio, height_ratio))
         scale = max(2, min(scale, 8))  # 限制在2-8之间
-        scale = 4
+        
         if self.upscale(image_path, output_path, scale):
             return output_path
         else:

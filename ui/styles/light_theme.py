@@ -11,7 +11,7 @@ LIGHT_THEME = """
         border: 1px solid #e0e0e0;
         border-radius: 5px;
         padding: 8px 16px;
-        min-width: 80px;
+        min-width: 40px;
         color: #202020;
     }
     QPushButton:hover {

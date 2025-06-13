@@ -34,7 +34,7 @@ class WallpaperController(QObject):
             
         if not self.model.wallpaper_list:
             show_error(self.view, "错误", "没有可用的壁纸!")
-            return False
+            return True
             
         # 加载第一张壁纸
         self.model.set_current_index(0)
@@ -282,3 +282,25 @@ class WallpaperController(QObject):
             thumbnail = self.model.manager.get_thumbnail_base64(filename)
             return thumbnail is not None
         return False
+    
+    def settings_changed(self):
+        """响应设置更改"""
+        # 重新加载壁纸列表 (如果壁纸目录改变了)
+        if self.view:
+            self.view.statusBar().showMessage("正在应用新设置...")
+            
+        # 可能需要根据设置变化执行其他操作
+        # 例如，如果壁纸目录改变，可能需要重建索引
+        config = self.model.manager.config
+        
+        # 重新启动自动切换计时器(如果有)
+        interval = config.WALLPAPER_CHANGE_INTERVAL
+        if hasattr(self, 'auto_change_timer'):
+            if interval > 0:
+                # 将分钟转换为毫秒
+                self.auto_change_timer.start(interval * 60 * 1000)
+            else:
+                self.auto_change_timer.stop()
+        
+        if self.view:
+            self.view.statusBar().showMessage("设置已应用", 3000)
