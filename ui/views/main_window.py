@@ -37,29 +37,6 @@ class WallpaperMainWindow(FluentWindow):
         # 连接裁剪请求信号
         if hasattr(self.homeInterface, 'cropRequested'):
             self.homeInterface.cropRequested.connect(self.handle_crop_request)
-
-    def getImageSize(self):
-        """获取当前场景中图片的大小"""
-        try:
-            if hasattr(self.homeInterface, 'image_view'):
-                view = self.homeInterface.image_view
-                
-                # 尝试使用直接方法获取图片大小
-                if hasattr(view, 'getImageSize'):
-                    return view.getImageSize()
-                
-                # 回退到场景大小
-                if hasattr(view, 'scene'):
-                    return view.scene.sceneRect().width(), view.scene.sceneRect().height()
-                
-                print("无法获取图片大小")
-                return None
-            else:
-                print("未找到image_view属性")
-                return None
-        except Exception as e:
-            print(f"获取图片大小时出错: {e}")
-            return None
         
     def handle_crop_request(self, crop_rect):
         """处理裁剪请求"""

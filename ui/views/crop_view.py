@@ -46,30 +46,6 @@ class CropGraphicsView(QGraphicsView):
         
         # 设置鼠标样式
         self.setCursor(Qt.CursorShape.CrossCursor)
-
-    def getImageSize(self):
-        """获取当前显示在视图中的图片实际大小"""
-        try:
-            # 查找图片项
-            for item in self.scene.items():
-                if isinstance(item, QGraphicsPixmapItem):
-                    # 获取图片项的边界矩形
-                    rect = item.boundingRect()
-                    
-                    # 获取视图到场景的变换
-                    transform = self.transform()
-                    
-                    # 计算显示的实际宽度和高度（考虑缩放）
-                    viewport_rect = self.mapFromScene(rect).boundingRect()
-                    
-                    return viewport_rect
-                    
-            # 如果没有找到图片项，回退到场景大小
-            return self.scene
-        
-        except Exception as e:
-            print(f"获取显示图片大小时出错: {e}")
-            return None
     
     def setImage(self, pixmap):
         """设置图片"""

@@ -125,7 +125,7 @@ class WallpaperController(QObject):
             original_img = QImage(info["path"])
             
             # 获取缩放比例 - 需要场景大小
-            scene_rect = self.view.getImageSize()
+            scene_rect = self.view.homeInterface.image_view.scene.sceneRect()
             print(f"Scene Rect: {scene_rect}")
             
             # 计算缩放比例
