@@ -81,7 +81,7 @@ class GalleryInterface(QFrame):
         # 刷新按钮
         self.refresh_button = PrimaryToolButton(FIF.SYNC)
         self.refresh_button.setToolTip("刷新图库")
-        self.refresh_button.setFixedSize(36, 36)
+        # self.refresh_button.setFixedSize(36, 36)
         self.refresh_button.clicked.connect(self.refresh_gallery)
         
         # 添加控件到布局
@@ -334,7 +334,7 @@ class GalleryInterface(QFrame):
         """使用流布局填充缩略图"""
         for filename, info in sorted_items:
             is_excluded = info.get("excluded", False)
-            thumbnail = ThumbnailWidget(filename, info, is_excluded)
+            thumbnail = ThumbnailWidget(filename, info, is_excluded=is_excluded)
             
             # 连接缩略图信号 - 使用新的信号名
             thumbnail.itemClicked.connect(self._on_thumbnail_clicked)

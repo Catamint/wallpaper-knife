@@ -12,14 +12,17 @@ from qfluentwidgets import (FluentIcon as FIF, NavigationItemPosition, CardWidge
                           PrimaryToolButton, TransparentPushButton, FluentStyleSheet,
                           ImageLabel, InfoBadge, SingleDirectionScrollArea)
 
+MINIMUM_HEIGHT = 160  # 固定高度
+
 class RoundedImageLabel(QWidget):
     """圆角图片标签"""
     
     clicked = pyqtSignal()  # 点击信号
     
+    
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumHeight(160)  # 固定高度
+        self.setMinimumHeight(MINIMUM_HEIGHT)  # 固定高度
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)  # 宽度自适应，高度固定
         
         # 图片属性
@@ -64,10 +67,10 @@ class RoundedImageLabel(QWidget):
     def sizeHint(self):
         """建议大小"""
         if self._pixmap.isNull():
-            return QSize(260, 160)
+            return QSize(260, MINIMUM_HEIGHT)
             
         # 保持图片比例，固定高度
-        height = 160
+        height = MINIMUM_HEIGHT
         width = int(self._pixmap.width() * (height / self._pixmap.height()))
         return QSize(width, height)
     
@@ -153,53 +156,53 @@ class ThumbnailWidget(QWidget):
         
         # 设置尺寸策略 - 高度固定，宽度自适应
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.setMinimumHeight(200)  # 最小高度包含图片+文本
+        self.setMinimumHeight(MINIMUM_HEIGHT)  # 最小高度包含图片+文本
         
         # 创建布局
         self.layout = QVBoxLayout(self)
         self.layout.setContentsMargins(0, 0, 0, 0)
-        self.layout.setSpacing(4)
-        
+        # self.layout.setSpacing(4)
+
+        # 文件名标签
+        display_name = info.get("display_name", filename)
+        if len(display_name) > 100:
+            display_name = display_name[:97] + "..."        
         # 创建图片标签
+
         self.image_label = RoundedImageLabel(self)
         self.image_label.setExcluded(is_excluded)
         self.image_label.clicked.connect(self._on_image_clicked)
-        
-        # 文件名标签
-        display_name = info.get("display_name", filename)
-        if len(display_name) > 20:
-            display_name = display_name[:17] + "..."
             
-        self.name_label = CaptionLabel(display_name, self)
-        self.name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.name_label.setToolTip(filename)
-        self.name_label.installEventFilter(ToolTipFilter(self.name_label))
+        self.image_label.setToolTip(display_name)
+        self.image_label.installEventFilter(ToolTipFilter(self.image_label))
         
         # 创建按钮 (初始隐藏)
         if is_excluded:
-            self.action_button = TransparentToolButton(FIF.ACCEPT, self)
+            self.action_button = ToolButton(FIF.ACCEPT, self.image_label)
             self.action_button.setToolTip("恢复此壁纸")
             self.action_button.clicked.connect(self._on_include_clicked)
         else:
-            self.action_button = TransparentToolButton(FIF.CANCEL, self)
+            self.action_button = ToolButton(FIF.CANCEL, self.image_label)
             self.action_button.setToolTip("排除此壁纸")
             self.action_button.clicked.connect(self._on_exclude_clicked)
             
         self.action_button.setFixedSize(32, 32)
+        self.action_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.action_button.installEventFilter(ToolTipFilter(self.action_button))
         self.action_button.hide()  # 初始隐藏
+        self.action_button.raise_() # 确保按钮在最上层
         
         # 添加到布局
         self.layout.addWidget(self.image_label)
-        self.layout.addWidget(self.name_label, 0, Qt.AlignmentFlag.AlignCenter)
-        
+      
         # 加载缩略图
         self._load_thumbnail()
         
     def showButton(self):
         """显示操作按钮"""
         # 计算按钮位置 - 右上角
-        btn_x = self.image_label.width() - self.action_button.width() - 5
-        btn_y = 5
+        btn_x = self.image_label.width() - self.action_button.width() - 15
+        btn_y = 15
         self.action_button.move(btn_x, btn_y)
         self.action_button.show()
         self.action_button.raise_()

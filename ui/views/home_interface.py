@@ -7,7 +7,7 @@ import os  # 确保导入os模块
 from qfluentwidgets import (FluentWindow, FluentIcon as FIF, NavigationItemPosition,
                           ToolButton, PrimaryPushButton, TransparentToolButton, 
                           SwitchButton, ComboBox, SubtitleLabel, CaptionLabel, 
-                          setTheme, Theme, InfoBar, InfoBarPosition,PrimaryToolButton)
+                          setTheme, Theme, InfoBar, InfoBarPosition,PrimaryToolButton,ToolTipFilter)
 
 from .crop_view import CropGraphicsView
 
@@ -57,28 +57,24 @@ class HomeInterface(QFrame):
         
         # 底部控制栏
         bottom_layout = QHBoxLayout()
-
-        # 应用裁剪按钮
-        self.crop_button = PrimaryPushButton("应用裁剪")
-        self.crop_button.setIcon(FIF.CUT)
-        self.crop_button.setToolTip("应用裁剪")
-        self.crop_button.clicked.connect(self.on_apply_crop)
-        bottom_layout.addWidget(self.crop_button)
+        
+        # 随机壁纸按钮
+        self.random_button = PrimaryToolButton(FIF.CAFE)
+        self.random_button.setToolTip("随机壁纸")
+        self.random_button.setIconSize(QSize(20, 20))
+        self.random_button.installEventFilter(ToolTipFilter(self.random_button))
+        self.random_button.clicked.connect(self.safe_random_wallpaper)
+        bottom_layout.addWidget(self.random_button)
 
         # 导航按钮组
         nav_layout = QHBoxLayout()
         nav_layout.setSpacing(8)
         
-        # 随机壁纸按钮
-        self.random_button = PrimaryToolButton(FIF.CAFE)
-        self.random_button.setToolTip("随机壁纸")
-        self.random_button.clicked.connect(self.safe_random_wallpaper)
-        nav_layout.addWidget(self.random_button)
-
         # 上一张按钮
         self.prev_button = ToolButton(FIF.LEFT_ARROW)
         self.prev_button.setIconSize(QSize(20, 20))
         self.prev_button.setToolTip("上一张壁纸")
+        self.prev_button.installEventFilter(ToolTipFilter(self.prev_button))
         self.prev_button.clicked.connect(self.safe_prev_wallpaper)
         nav_layout.addWidget(self.prev_button)
         
@@ -86,12 +82,15 @@ class HomeInterface(QFrame):
         self.next_button = ToolButton(FIF.RIGHT_ARROW)
         self.next_button.setIconSize(QSize(20, 20))
         self.next_button.setToolTip("下一张壁纸")
+        self.next_button.installEventFilter(ToolTipFilter(self.next_button))
         self.next_button.clicked.connect(self.safe_next_wallpaper)
         nav_layout.addWidget(self.next_button)
 
         # 排除当前按钮
         self.exclude_button = TransparentToolButton(FIF.CANCEL)
         self.exclude_button.setToolTip("排除当前壁纸")
+        self.exclude_button.setIconSize(QSize(20, 20))
+        self.exclude_button.installEventFilter(ToolTipFilter(self.exclude_button))
         self.exclude_button.clicked.connect(self.safe_exclude_wallpaper)
         nav_layout.addWidget(self.exclude_button)
 
@@ -99,10 +98,23 @@ class HomeInterface(QFrame):
         bottom_layout.addStretch(1)
 
         # 当前壁纸信息
-        self.info_label = QLabel("正在加载壁纸...")
+        self.info_label = CaptionLabel("正在加载壁纸...")
         self.info_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         bottom_layout.addWidget(self.info_label)
         
+        # 应用裁剪按钮
+        self.crop_button = PrimaryPushButton("应用裁剪")
+        self.crop_button.setIcon(FIF.CUT)
+        self.crop_button.setToolTip("应用裁剪")
+        self.crop_button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        self.crop_button.setIconSize(QSize(20, 20))
+        self.crop_button.installEventFilter(ToolTipFilter(self.crop_button))
+        self.crop_button.clicked.connect(self.on_apply_crop)
+        bottom_layout.addWidget(self.crop_button)
+        self.info_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        # self.crop_button.setEnabled(False)  # 初始禁用，等待裁剪区域选择
+        # self.image_view.cropRectChanged.connect(lambda: self.crop_button.setEnabled(True))
+
         layout.addLayout(bottom_layout)
     
     def safe_random_wallpaper(self):
@@ -114,7 +126,7 @@ class HomeInterface(QFrame):
                 self.show_error("随机壁纸功能未实现")
         except Exception as e:
             self.show_error(f"随机壁纸时出错: {str(e)}")
-    
+
     def safe_set_wallpaper(self):
         """安全的设置壁纸方法"""
         try:
