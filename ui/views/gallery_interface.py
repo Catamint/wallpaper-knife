@@ -566,58 +566,6 @@ class GalleryInterface(QFrame):
             parent=self
         )
     
-    def highlight_item(self, key):
-        """高亮显示指定键的壁纸项"""
-        try:
-            # 获取当前显示的所有小部件
-            found_items = []
-            
-            # 遍历布局中的所有项目
-            for i in range(self.flow_layout.count()):
-                layout_item = self.flow_layout.itemAt(i)
-                # 确保获取的是小部件项
-                if layout_item and layout_item.widget():
-                    widget = layout_item.widget()
-                    # 确保是ThumbnailWidget类型
-                    if isinstance(widget, ThumbnailWidget):
-                        found_items.append(widget)
-            
-            # 清除所有高亮
-            for item in found_items:
-                # 恢复正常样式
-                item._update_style()
-            
-            # 找到匹配的项目并高亮
-            for item in found_items:
-                if item.filename == key:
-                    # 设置高亮样式
-                    item.setStyleSheet("""
-                        CardWidget {
-                            border: 2px solid #0078d4;
-                            border-radius: 8px;
-                            background-color: rgba(0, 120, 212, 0.1);
-                        }
-                        
-                        CardWidget:hover {
-                            background-color: rgba(0, 120, 212, 0.2);
-                        }
-                        
-                        #thumbnailContainer {
-                            background-color: rgba(0, 0, 0, 10);
-                            border-radius: 4px;
-                        }
-                    """)
-                    
-                    # 滚动到该项目
-                    if self.scroll_area:
-                        self.scroll_area.ensureWidgetVisible(item)
-                    break
-                
-        except Exception as e:
-            print(f"高亮项目时出错: {e}")
-            import traceback
-            traceback.print_exc()
-    
     def showEvent(self, event):
         """在显示图库时自动加载数据"""
         super().showEvent(event)
