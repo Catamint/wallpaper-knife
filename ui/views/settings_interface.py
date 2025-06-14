@@ -27,7 +27,7 @@ class WallpaperConfig(QConfig):
     # 目录设置
     wallpaperDir = ConfigItem("Directories", "WallpaperDir", "./wallpapers", FolderValidator())
     cacheDir = ConfigItem("Directories", "CacheDir", "./cache", FolderValidator())
-    # toolsDir = ConfigItem("Directories", "ToolsDir", "./tools", FolderValidator())
+    toolsDir = ConfigItem("Directories", "ToolsDir", "./tools", FolderValidator())
     
     # 显示设置
     notifications = ConfigItem("Display", "ShowNotifications", True, BoolValidator())
@@ -203,6 +203,11 @@ class SettingsInterface(QFrame):
         self.config.cacheDir.value = folder
         self._notify_settings_changed()
     
+    def _on_tools_dir_changed(self, folder):
+        """工具目录改变时的处理"""
+        self.config.toolsDir.value = folder
+        self._notify_settings_changed()
+    
     def _on_realesrgan_path_changed(self, path):
         """Real-ESRGAN路径改变时的处理"""
         self.config.realesrganPath.value = path
@@ -239,6 +244,7 @@ class SettingsInterface(QFrame):
             # 2. 同步目录配置
             app_config.settings["directories"]["wallpaper"] = self.config.wallpaperDir.value
             app_config.settings["directories"]["cache"] = self.config.cacheDir.value
+            app_config.settings["directories"]["tools"] = self.config.toolsDir.value
             
             # 3. 同步显示设置
             app_config.settings["display"]["show_notifications"] = self.config.notifications.value
@@ -280,6 +286,7 @@ class SettingsInterface(QFrame):
             # 同步目录设置
             self.config.wallpaperDir.value = app_config.WALLPAPER_DIR
             self.config.cacheDir.value = app_config.CACHE_DIR
+            self.config.toolsDir.value = app_config.TOOLS_DIR
             
             # 同步显示设置
             self.config.notifications.value = app_config.SHOW_NOTIFICATIONS
@@ -388,6 +395,17 @@ class SettingsInterface(QFrame):
         )
         self.cache_dir_card.clicked.connect(self.browse_cache_dir)
         directory_group.addSettingCard(self.cache_dir_card)
+        
+        # 工具目录
+        self.tools_dir_card = PushSettingCard(
+            "选择文件夹",
+            FIF.FOLDER,
+            "工具目录",
+            self.config.toolsDir.value,  # 使用当前值
+            parent=directory_group
+        )
+        self.tools_dir_card.clicked.connect(self.browse_tools_dir)
+        directory_group.addSettingCard(self.tools_dir_card)
         
         self.scroll_layout.addWidget(directory_group)
     
@@ -499,6 +517,18 @@ class SettingsInterface(QFrame):
                 self._notify_settings_changed()  # 通知更改
         except Exception as e:
             self.show_error(f"选择缓存目录时出错: {str(e)}")
+    
+    def browse_tools_dir(self):
+        """选择工具目录"""
+        try:
+            current_dir = self.config.toolsDir.value
+            dir_path = QFileDialog.getExistingDirectory(self, "选择工具目录", current_dir)
+            if dir_path:
+                self.tools_dir_card.setContent(dir_path)
+                self.config.toolsDir.value = dir_path  # 更新配置
+                self._notify_settings_changed()  # 通知更改
+        except Exception as e:
+            self.show_error(f"选择工具目录时出错: {str(e)}")
     
     def browse_realesrgan_path(self):
         """选择Real-ESRGAN可执行文件"""
@@ -699,6 +729,24 @@ class SettingsInterface(QFrame):
             self.show_error(f"保存设置时出错: {str(e)}")
             return False
     
+    def cancel_changes(self):
+        """取消更改"""
+        try:
+            # 重新加载设置值，恢复到之前的状态
+            self.load_settings_values()
+            
+            InfoBar.info(
+                title='已取消',
+                content='设置更改已取消',
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.BOTTOM_RIGHT,
+                duration=2000,
+                parent=self
+            )
+        except Exception as e:
+            self.show_error(f"取消更改时出错: {str(e)}")
+    
     def restore_defaults(self):
         """恢复默认设置"""
         try:
@@ -779,7 +827,7 @@ class SettingsInterface(QFrame):
             print("设置界面: 首次显示，更新目录卡显示")
             self.wallpaper_dir_card.setContent(self.config.wallpaperDir.value)
             self.cache_dir_card.setContent(self.config.cacheDir.value)
-            # self.tools_dir_card.setContent(self.config.toolsDir.value)
+            self.tools_dir_card.setContent(self.config.toolsDir.value)
             self.realesrgan_path_card.setContent(self.config.realesrganPath.value)
             self._settings_loaded = True
     
@@ -789,7 +837,7 @@ class SettingsInterface(QFrame):
             # 目录设置需要手动更新
             self.wallpaper_dir_card.setContent(self.config.wallpaperDir.value)
             self.cache_dir_card.setContent(self.config.cacheDir.value)
-            # self.tools_dir_card.setContent(self.config.toolsDir.value)
+            self.tools_dir_card.setContent(self.config.toolsDir.value)
             self.realesrgan_path_card.setContent(self.config.realesrganPath.value)
             
             # 其他带有ConfigItem的设置卡会自动更新
