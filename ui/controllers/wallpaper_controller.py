@@ -15,7 +15,11 @@ class WallpaperController(QObject):
         self.image_utils = image_utils
         self.realesrgan = realesrgan_tool
         self.view = None  # Will be set later
-        
+            
+        # 尝试从QConfig同步配置
+        if os.path.exists("config.json"):
+            self.model.manager.config.sync_from_qconfig()
+
         # 连接模型信号
         self.model.currentWallpaperChanged.connect(self._on_wallpaper_changed)
         
@@ -197,21 +201,13 @@ class WallpaperController(QObject):
     def open_gallery(self):
         """打开图库视图"""
         # 获取所有壁纸数据 (包括已排除)
-        wallpaper_data = self.model.get_all_wallpapers()
-        
-        # 调试输出
-        print(f"获取到的壁纸数据: {len(wallpaper_data)} 条")
-        if len(wallpaper_data) > 0:
-            print(f"数据示例: {list(wallpaper_data.keys())[0]}")
-        else:
-            print("壁纸数据为空")
+        wallpaper_data = self.get_wallpaper_data()
         
         # 通知视图打开图库
         if hasattr(self.view, "show_gallery"):
             self.view.show_gallery(wallpaper_data)
-
-        # if hasattr(self.view, "galleryInterface"):
-        #     self.view.galleryInterface.set_data(wallpaper_data)
+        elif hasattr(self.view, "galleryInterface"):
+            self.view.galleryInterface.set_data(wallpaper_data)
 
     @pyqtSlot(str)
     @pyqtSlot()  # 添加一个无参数的重载
@@ -364,13 +360,8 @@ class WallpaperController(QObject):
 
     @pyqtSlot()
     def settings_changed(self):
-        """响应设置更改"""
-        # 重新加载壁纸列表 (如果壁纸目录改变了)
-        if self.view and hasattr(self.view, "statusBar"):
-            self.view.statusBar().showMessage("正在应用新设置...")
-            
-        # 可能需要根据设置变化执行其他操作
-        # 例如，如果壁纸目录改变，可能需要重建索引
+        """当设置变更时的处理函数"""
+        # 获取配置
         config = self.model.manager.config
         
         # 重新启动自动切换计时器
@@ -386,6 +377,10 @@ class WallpaperController(QObject):
         if hasattr(config, 'AUTO_START'):
             self.set_auto_start(config.AUTO_START)
         
+        # 应用托盘设置
+        # ...
+        
+        # 显示提示信息
         if self.view and hasattr(self.view, "statusBar"):
             self.view.statusBar().showMessage("设置已应用", 3000)
 
@@ -424,27 +419,56 @@ class WallpaperController(QObject):
     @pyqtSlot()
     def refresh_gallery(self):
         """刷新图库"""
-        # 重新获取壁纸数据
-        wallpaper_data = self.model.get_all_wallpapers()
+        # 使用新方法获取壁纸数据
+        wallpaper_data = self.get_wallpaper_data()
         
         # 检查是否有数据
         if not wallpaper_data:
-            # # 尝试重建索引
-            # if self.view and hasattr(self.view, "statusBar"):
-            #     self.view.statusBar().showMessage("正在重建索引...")
-                
-            # success = self.model.build_index()
+            print("没有可用的壁纸数据")
             
-            # if success:
-            #     # 重新获取数据
-            #     wallpaper_data = self.model.get_all_wallpapers()
-            #     if self.view and hasattr(self.view, "statusBar"):
-            #         self.view.statusBar().showMessage(f"索引已重建，找到 {len(wallpaper_data)} 张壁纸", 3000)
-            # else:
-            #     if self.view and hasattr(self.view, "statusBar"):
-            #         self.view.statusBar().showMessage("索引重建失败", 3000)
-            print("没有可用的壁纸数据，无法刷新图库")
-            
+            # 显示错误提示
+            if self.view:
+                from qfluentwidgets import InfoBar, InfoBarPosition
+                from PyQt6.QtCore import Qt
+                InfoBar.error(
+                    title='错误',
+                    content='没有可用的壁纸数据',
+                    orient=Qt.Orientation.Horizontal,
+                    isClosable=True,
+                    position=InfoBarPosition.TOP_RIGHT,
+                    duration=3000,
+                    parent=self.view
+                )
+        
         # 更新图库数据
         if hasattr(self.view, "galleryInterface"):
             self.view.galleryInterface.set_data(wallpaper_data)
+
+    def get_wallpaper_data(self):
+        """获取所有壁纸数据
+    
+        Returns:
+            dict: 包含所有壁纸信息的字典，键为文件名，值为壁纸信息
+        """
+        try:
+            # 从模型中获取所有壁纸数据
+            wallpaper_data = self.model.get_all_wallpapers()
+            
+            # 如果数据为空，尝试重建索引
+            if not wallpaper_data and hasattr(self.model, 'load_index'):
+                print("壁纸数据为空，尝试重新加载索引...")
+                self.model.load_index()
+                wallpaper_data = self.model.get_all_wallpapers()
+            
+            # 如果仍然为空，打印调试信息
+            if not wallpaper_data:
+                print("警告：获取到的壁纸数据为空")
+            else:
+                print(f"获取到 {len(wallpaper_data)} 条壁纸数据")
+            
+            return wallpaper_data
+        except Exception as e:
+            print(f"获取壁纸数据时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            return {}

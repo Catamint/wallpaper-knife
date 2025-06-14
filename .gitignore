@@ -9,5 +9,7 @@ build/
 dist/
 *.zip
 *.exe
+cache/*
+wallpapers/
 # Except this file
 !.gitignore

@@ -18,7 +18,7 @@ from ui.views.main_window import WallpaperMainWindow
 
 def main():
     # 命令行参数
-    parser = argparse.ArgumentParser(description='壁纸')
+    parser = argparse.ArgumentParser(description='壁纸刀')
     parser.add_argument('--cli', action='store_true', help='使用命令行模式')
     parser.add_argument('--rebuild', action='store_true', help='重建索引')
     parser.add_argument('--ui', choices=['tk', 'qt'], default='qt', help='选择UI框架 (tk/qt)')
@@ -26,7 +26,7 @@ def main():
     
     # 初始化核心组件
     config = Config()  # 这将加载settings.json
-    file_utils = FileUtils(config)
+    file_utils = FileUtils()
     wallpaper_manager = WallpaperManager(config, file_utils)
     
     # 设置随机种子

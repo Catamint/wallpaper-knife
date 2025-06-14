@@ -1,5 +1,5 @@
 import base64
-from PyQt6.QtCore import Qt, pyqtSlot, QSize, pyqtSignal, QByteArray, QBuffer, QIODevice, QTimer
+from PyQt6.QtCore import Qt, pyqtSlot, QSize, pyqtSignal, QByteArray, QBuffer, QIODevice, QTimer, QThread
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QColor
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QFrame, QSizePolicy, QScrollArea
 
@@ -9,212 +9,9 @@ from qfluentwidgets import (FluentIcon as FIF, NavigationItemPosition, CardWidge
                           SwitchButton, ComboBox, SubtitleLabel, CaptionLabel, BodyLabel, StrongBodyLabel,
                           setTheme, Theme, InfoBar, InfoBarPosition, FlowLayout, SearchLineEdit,
                           HyperlinkButton, TitleLabel, PushButton, ToolTipFilter,
-                          PrimaryToolButton, TransparentPushButton, FluentStyleSheet)
-
-
-class ThumbnailWidget(CardWidget):
-    """单个缩略图小部件 - 使用FluentWidgets风格"""
-    itemClicked = pyqtSignal(str)  # 修改：将 clicked 重命名为 itemClicked
-    excludeClicked = pyqtSignal(str)  # 排除按钮信号
-    includeClicked = pyqtSignal(str)  # 恢复按钮信号
-    
-    def __init__(self, filename, info, is_excluded=False, parent=None):
-        super().__init__(parent)
-        self.filename = filename
-        self.info = info
-        self.is_excluded = is_excluded
-        
-        # 新增：连接基类信号到自定义处理函数
-        self.clicked.connect(self._handle_click)
-        
-        # 设置基本属性
-        self.setFixedSize(200, 200)
-        
-        # 创建布局
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(4)
-        
-        # 缩略图显示区域
-        self.thumbnail_label = QWidget()
-        self.thumbnail_label.setMinimumSize(180, 120)
-        self.thumbnail_label.setObjectName("thumbnailContainer")
-        
-        thumb_layout = QVBoxLayout(self.thumbnail_label)
-        thumb_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        thumb_layout.setContentsMargins(0, 0, 0, 0)
-        
-        self.image_label = BodyLabel("")
-        self.image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        thumb_layout.addWidget(self.image_label)
-        
-        layout.addWidget(self.thumbnail_label)
-        
-        # 文件名标签
-        display_name = info.get("display_name", filename)
-        if len(display_name) > 20:
-            display_name = display_name[:17] + "..."
-            
-        self.name_label = StrongBodyLabel(display_name)
-        self.name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.name_label.setToolTip(filename)
-        self.name_label.installEventFilter(ToolTipFilter(self.name_label))
-        layout.addWidget(self.name_label)
-        
-        # # 使用CaptionLabel显示分辨率信息
-        # if "resolution" in info:
-        #     resolution = info["resolution"]
-        # else:
-        #     resolution = f"{info.get('width', '?')}x{info.get('height', '?')}"
-            
-        # self.info_label = CaptionLabel(resolution)
-        # self.info_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # layout.addWidget(self.info_label)
-        
-        # 按钮区域
-        buttons_layout = QHBoxLayout()
-        buttons_layout.setContentsMargins(0, 4, 0, 0)
-        buttons_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        
-        # 按钮: 排除/恢复
-        if is_excluded:
-            self.toggle_button = TransparentPushButton("恢复")
-            self.toggle_button.setIcon(FIF.ACCEPT)
-            self.toggle_button.setToolTip("将此壁纸从排除列表移除")
-            self.toggle_button.clicked.connect(self._on_include_clicked)
-            
-            # 设置样式表示已排除
-            self.setProperty("excluded", True)
-            self.setStyle(self.style())
-        else:
-            self.toggle_button = TransparentPushButton("排除")
-            self.toggle_button.setIcon(FIF.CANCEL)
-            self.toggle_button.setToolTip("将此壁纸加入排除列表")
-            self.toggle_button.clicked.connect(self._on_exclude_clicked)
-            
-            self.setProperty("excluded", False)
-            self.setStyle(self.style())
-        
-        buttons_layout.addWidget(self.toggle_button)
-        layout.addLayout(buttons_layout)
-        
-        # 设置样式表
-        self._update_style()
-        
-        # 加载缩略图
-        self._load_thumbnail()
-    
-    def _update_style(self):
-        """更新样式表"""
-        FluentStyleSheet.CARD_WIDGET.apply(self)
-        
-        if self.is_excluded:
-            self.setStyleSheet("""
-                CardWidget {
-                    border-radius: 8px;
-                    background-color: rgba(100, 100, 100, 30);
-                }
-                
-                CardWidget:hover {
-                    background-color: rgba(120, 120, 120, 50);
-                }
-                
-                #thumbnailContainer {
-                    background-color: rgba(0, 0, 0, 10);
-                    border-radius: 4px;
-                }
-                               
-                QScrollArea {
-                    background-color: transparent;
-                    border: none;
-                }
-                QScrollArea > QWidget > QWidget {
-                    background-color: transparent;
-                }
-            """)
-        else:
-            self.setStyleSheet("""
-                CardWidget {
-                    border-radius: 8px;
-                    background-color: rgba(255, 255, 255, 20);
-                }
-                
-                CardWidget:hover {
-                    background-color: rgba(200, 200, 200, 40);
-                }
-                
-                #thumbnailContainer {
-                    background-color: rgba(0, 0, 0, 10);
-                    border-radius: 4px;
-                }
-                               
-                QScrollArea {
-                    background-color: transparent;
-                    border: none;
-                }
-                QScrollArea > QWidget > QWidget {
-                    background-color: transparent;
-                }
-            """)
-    
-    def _load_thumbnail(self):
-        """加载缩略图"""
-        try:
-            if "view_pic" in self.info and self.info["view_pic"]:
-                # 从base64加载
-                base64_data = self.info["view_pic"]
-                pixmap = QPixmap()
-                if pixmap.loadFromData(QByteArray.fromBase64(base64_data.encode())):
-                    # 调整大小以适应标签
-                    pixmap = pixmap.scaled(180, 120, Qt.AspectRatioMode.KeepAspectRatio, 
-                                         Qt.TransformationMode.SmoothTransformation)
-                    # 设置缩略图
-                    self.image_label.setPixmap(pixmap)
-                else:
-                    self.image_label.setText("加载失败\n无效的图片数据")
-            elif "path" in self.info:
-                # 从文件加载
-                pixmap = QPixmap(self.info["path"])
-                if not pixmap.isNull():
-                    # 调整大小以适应标签
-                    pixmap = pixmap.scaled(180, 120, Qt.AspectRatioMode.KeepAspectRatio, 
-                                         Qt.TransformationMode.SmoothTransformation)
-                    
-                    # 如果需要，创建并保存缩略图的base64
-                    if "view_pic" not in self.info:
-                        buffer = QBuffer()
-                        buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-                        pixmap.save(buffer, "JPG", 80)
-                        base64_data = base64.b64encode(buffer.data()).decode()
-                        self.info["view_pic"] = base64_data
-                    
-                    # 设置缩略图
-                    self.image_label.setPixmap(pixmap)
-                else:
-                    self.image_label.setText("加载失败\n无效的图片")
-            else:
-                self.image_label.setText("无图片路径")
-        
-        except Exception as e:
-            # 加载失败时显示占位图
-            self.image_label.setText(f"加载失败\n{str(e)}")
-            print(f"加载缩略图时出错: {e}")
-    
-    def _on_exclude_clicked(self):
-        """排除按钮点击事件"""
-        self.excludeClicked.emit(self.filename)
-    
-    def _on_include_clicked(self):
-        """恢复按钮点击事件"""
-        self.includeClicked.emit(self.filename)
-    
-    def _handle_click(self):
-        """处理基类的点击事件，转发带有文件名的信号"""
-        # 只在缩略图区域内才发出信号
-        cursor_pos = self.mapFromGlobal(self.cursor().pos())
-        if self.thumbnail_label.geometry().contains(cursor_pos):
-            self.itemClicked.emit(self.filename)
-            
+                          PrimaryToolButton, TransparentPushButton, FluentStyleSheet,
+                          ElevatedCardWidget, ImageLabel, InfoBadge,SingleDirectionScrollArea)
+from .ThumbnailWidget import ThumbnailWidget
 
 class GalleryInterface(QFrame):
     """图库界面 - 使用FlowLayout重构"""
@@ -244,18 +41,17 @@ class GalleryInterface(QFrame):
         main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(10)
         
-        # 顶部标题和控制区域
-        header_layout = QVBoxLayout()
+        # 顶部标题和控制区域放在同一行
+        header_layout = QHBoxLayout()  # 改为水平布局
         header_layout.setSpacing(12)
         
-        # 标题
+        # 标题 - 放在左侧
         title_label = TitleLabel("壁纸图库")
         title_label.setObjectName("galleryTitle")
         header_layout.addWidget(title_label)
         
-        # 控制区域
+        # 控制区域 - 放在右侧
         controls_frame = QFrame()
-        
         controls_frame.setObjectName("controlsFrame")
         controls_layout = QHBoxLayout(controls_frame)
         controls_layout.setContentsMargins(10, 10, 10, 10)
@@ -274,11 +70,11 @@ class GalleryInterface(QFrame):
         self.search_input.textChanged.connect(self.on_search_changed)
         
         # 批量操作按钮
-        self.batch_exclude_button = PrimaryPushButton("排除选中")
+        self.batch_exclude_button = PrimaryPushButton("排除")
         self.batch_exclude_button.setIcon(FIF.CANCEL)
         self.batch_exclude_button.clicked.connect(self.on_batch_exclude)
         
-        self.batch_include_button = PrimaryPushButton("恢复选中")
+        self.batch_include_button = PrimaryPushButton("恢复")
         self.batch_include_button.setIcon(FIF.ACCEPT)
         self.batch_include_button.clicked.connect(self.on_batch_include)
         
@@ -295,11 +91,11 @@ class GalleryInterface(QFrame):
         controls_layout.addWidget(self.batch_include_button)
         controls_layout.addWidget(self.refresh_button)
         
-        header_layout.addWidget(controls_frame)
+        header_layout.addWidget(controls_frame, 1)  # 控制区域占据更多空间
         main_layout.addLayout(header_layout)
         
         # 创建滚动区域用于显示缩略图
-        self.scroll_area = QScrollArea()
+        self.scroll_area = SingleDirectionScrollArea(orient=Qt.Orientation.Vertical)
         self.scroll_area.setWidgetResizable(True)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -320,12 +116,17 @@ class GalleryInterface(QFrame):
         
         self.scroll_area.setWidget(self.scroll_content)
         main_layout.addWidget(self.scroll_area, 1)  # 让滚动区域可拉伸
-        
+
         # 底部状态栏
         self.status_label = BodyLabel("准备就绪")
         self.status_label.setObjectName("statusLabel")
         main_layout.addWidget(self.status_label)
         
+        # 添加加载指示器
+        self.loading_widget = InfoBadge.success(1)
+        # self.loading_widget.setFixedSize(60, 60)
+        self.loading_widget.hide()
+    
         # 设置样式表
         self._update_style()
     
@@ -403,32 +204,57 @@ class GalleryInterface(QFrame):
     def refresh_display(self):
         """刷新显示"""
         try:
-            # 清空现有内容
-            self._clear_layout()
+            # 显示加载指示器
+            # self.show_loading("正在加载...")
             
-            # 过滤和排序数据
-            filtered_data = self._filter_wallpaper_data()
-            
-            # 如果没有数据，显示提示
-            if not filtered_data:
-                self._show_empty_message()
-                return
-            
-            # 排序 (按文件名)
-            sorted_items = sorted(filtered_data.items(), key=lambda x: x[0])
-            
-            # 填充流布局
-            self._populate_layout(sorted_items)
-            
-            # 更新状态
-            self.status_label.setText(f"显示 {len(filtered_data)} 张壁纸 (共 {len(self.wallpaper_data)} 张)")
+            # 使用定时器延迟执行实际渲染，让UI有机会更新加载指示器
+            QTimer.singleShot(50, lambda: self._perform_refresh_display())
             
         except Exception as e:
             print(f"刷新显示时出错: {e}")
             import traceback
             traceback.print_exc()
+            # self.hide_loading()
             self.show_error(f"刷新显示失败: {str(e)}")
 
+    def _perform_refresh_display(self):
+        """执行实际的刷新显示操作"""
+        try:
+            # 过滤和排序数据
+            filtered_data = self._filter_wallpaper_data()
+            
+            # 显示过滤后的数据
+            self._display_wallpaper_data(filtered_data)
+            
+            # 隐藏加载指示器
+            # self.hide_loading()
+            
+        except Exception as e:
+            print(f"执行刷新显示时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            # self.hide_loading()
+            self.show_error(f"刷新显示失败: {str(e)}")
+        
+    def _display_wallpaper_data(self, filtered_data):
+        """显示壁纸数据到UI"""
+        # 清空现有内容
+        self._clear_layout()
+    
+        # 如果没有数据，显示提示
+        if not filtered_data:
+            self._show_empty_message()
+            return
+    
+        # 排序 (按文件名)
+        sorted_items = sorted(filtered_data.items(), key=lambda x: x[0])
+    
+        # 填充流布局
+        self._populate_layout(sorted_items)
+    
+        # 更新状态
+        self.status_label.setText(f"显示 {len(filtered_data)} 张壁纸 (共 {len(self.wallpaper_data)} 张)")
+    
     def _clear_layout(self):
         """清空布局"""
         try:
@@ -519,11 +345,13 @@ class GalleryInterface(QFrame):
             self.flow_layout.addWidget(thumbnail)
     
     def on_filter_changed(self):
-        """筛选条件改变"""
+        """筛选条件改变时异步刷新"""
         filter_names = ["all", "included", "excluded"]
         self.current_filter = filter_names[self.filter_combo.currentIndex()]
+        
+        # 立即执行刷新显示
         self.refresh_display()
-    
+
     def on_search_changed(self):
         """搜索文本改变"""
         # 使用定时器避免输入过程中的频繁刷新
@@ -537,31 +365,33 @@ class GalleryInterface(QFrame):
         self._search_timer.start(300)  # 300ms 延迟
     
     def _do_search(self):
-        """执行搜索"""
+        """执行搜索时异步刷新"""
         self.search_text = self.search_input.text().strip()
+        
+        # 立即执行刷新显示
         self.refresh_display()
     
     def _on_thumbnail_clicked(self, filename):
         """缩略图点击事件"""
         try:
             # 高亮选中的缩略图
-            self.highlight_item(filename)
+            # self.highlight_item(filename)
             
             # 发送信号
             self.wallpaperSelected.emit(filename)
-            
-            # 显示选中提示
-            InfoBar.success(
-                title='已选择',
-                content=f'已选择壁纸: {filename}',
+
+        except Exception as e:
+            # 处理点击错误
+            print(f"缩略图点击处理出错: {e}")
+            InfoBar.error(
+                title='错误',
+                content=f'处理缩略图点击时出错: {str(e)}',
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                duration=1500,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
                 parent=self
             )
-        except Exception as e:
-            print(f"缩略图点击处理出错: {e}")
     
     def _on_exclude_wallpaper(self, filename):
         """将壁纸添加到排除列表"""
@@ -622,19 +452,59 @@ class GalleryInterface(QFrame):
             self.show_error(f"恢复壁纸失败: {str(e)}")
     
     def refresh_gallery(self):
-        """刷新图库"""
+        """异步刷新图库"""
         try:
-            if hasattr(self.controller, 'refresh_gallery'):
-                self.controller.refresh_gallery()
-            elif hasattr(self.controller, 'open_gallery'):
-                self.controller.open_gallery()
-            else:
-                # 如果控制器没有刷新方法，直接刷新显示
-                self.refresh_display()
+            # 显示加载指示器
+            # self.show_loading("正在刷新图库...")
+            
+            # 获取当前筛选和搜索
+            filter_names = ["all", "included", "excluded"]
+            current_filter = filter_names[self.filter_combo.currentIndex()]
+            search_text = self.search_input.text().strip()
+            
+            # 创建并启动异步线程
+            self.refresh_thread = GalleryRefreshThread(
+                self.controller,
+                filter_text=search_text,
+                filter_mode=current_filter
+            )
+            
+            # 连接信号
+            self.refresh_thread.finished.connect(self._on_refresh_complete)
+            self.refresh_thread.error.connect(self._on_refresh_error)
+            self.refresh_thread.progress.connect(self._on_refresh_progress)
+            
+            # 启动线程
+            self.refresh_thread.start()
+            
+        except Exception as e:
+            print(f"启动异步刷新时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            # self.hide_loading()
+            self.show_error(f"刷新图库失败: {str(e)}")
+
+    def _on_refresh_complete(self, data):
+        """异步刷新完成回调"""
+        try:
+            # 更新数据
+            if data:
+                self.wallpaper_data = data
                 
+                # 获取已排除的壁纸列表
+                self.excluded_files = {key for key, info in self.wallpaper_data.items() 
+                                      if info.get("excluded", False)}
+            
+            # 刷新UI显示
+            self._display_wallpaper_data(data)
+            
+            # 隐藏加载指示器
+            # self.hide_loading()
+            
+            # 显示成功消息
             InfoBar.success(
                 title='刷新完成',
-                content='图库已刷新',
+                content=f'图库已刷新，显示 {len(data)} 张壁纸',
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
@@ -643,8 +513,20 @@ class GalleryInterface(QFrame):
             )
             
         except Exception as e:
-            print(f"刷新图库时出错: {e}")
+            print(f"处理异步刷新结果时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            # self.hide_loading()
             self.show_error(f"刷新图库失败: {str(e)}")
+
+    def _on_refresh_error(self, error_message):
+        """异步刷新出错回调"""
+        # self.hide_loading()
+        self.show_error(f"刷新图库失败: {error_message}")
+
+    def _on_refresh_progress(self, progress):
+        """更新异步刷新进度"""
+        self.status_label.setText(f"正在刷新图库... {progress}%")
     
     def on_batch_exclude(self):
         """批量排除选中的壁纸"""
@@ -740,12 +622,92 @@ class GalleryInterface(QFrame):
         """在显示图库时自动加载数据"""
         super().showEvent(event)
         
+        # 确保加载指示器在正确位置
+        if hasattr(self, 'loading_widget'):
+            x = (self.width() - self.loading_widget.width()) // 2
+            y = (self.height() - self.loading_widget.height()) // 2
+            self.loading_widget.move(x, y)
+    
         # 如果没有数据或数据为空，尝试加载
         if not self.wallpaper_data or len(self.wallpaper_data) == 0:
             print("图库自动加载数据...")
             
+            # 显示加载指示器
+            # self.show_loading("正在加载壁纸数据...")
+            
             # 尝试使用控制器加载数据
+            QTimer.singleShot(100, lambda: self._load_initial_data())
+
+    def _load_initial_data(self):
+        """加载初始数据"""
+        try:
             if hasattr(self.controller, 'open_gallery'):
-                QTimer.singleShot(100, self.controller.open_gallery)
+                self.controller.open_gallery()
             elif hasattr(self.controller, 'refresh_gallery'):
-                QTimer.singleShot(100, self.controller.refresh_gallery)
+                self.controller.refresh_gallery()
+            else:
+                # 如果控制器没有相关方法，隐藏加载指示器
+                # self.hide_loading()
+                pass
+        except Exception as e:
+            print(f"加载初始数据时出错: {e}")
+            # self.hide_loading()
+            self.show_error(f"加载图库数据失败: {str(e)}")
+            
+# 添加刷新线程类
+class GalleryRefreshThread(QThread):
+    """异步刷新图库线程"""
+    finished = pyqtSignal(dict)  # 完成信号，传递刷新后的数据
+    error = pyqtSignal(str)      # 错误信号
+    progress = pyqtSignal(int)   # 进度信号
+    
+    def __init__(self, controller, filter_text="", filter_mode="all"):
+        super().__init__()
+        self.controller = controller
+        self.filter_text = filter_text
+        self.filter_mode = filter_mode
+    
+    def run(self):
+        """执行异步刷新"""
+        try:
+            # 如果控制器有获取数据的方法
+            if hasattr(self.controller, 'get_wallpaper_data'):
+                wallpaper_data = self.controller.get_wallpaper_data()
+                
+                # 过滤数据(如果需要)
+                filtered_data = {}
+                total = len(wallpaper_data)
+                
+                for i, (filename, info) in enumerate(wallpaper_data.items()):
+                    # 发送进度信号
+                    self.progress.emit(int((i / total) * 100) if total > 0 else 0)
+                    
+                    # 应用过滤规则 (如果数据量大，这部分可以移到主线程做)
+                    is_excluded = info.get("excluded", False)
+                    
+                    # 应用筛选
+                    if self.filter_mode == "included" and is_excluded:  # 只显示已启用
+                        continue
+                    elif self.filter_mode == "excluded" and not is_excluded:  # 只显示已排除
+                        continue
+                        
+                    # 应用搜索
+                    if self.filter_text:
+                        display_name = info.get("display_name", filename)
+                        if (self.filter_text.lower() not in display_name.lower() and 
+                            self.filter_text.lower() not in filename.lower()):
+                            continue
+                    
+                    filtered_data[filename] = info
+                
+                # 发送完成信号
+                self.finished.emit(filtered_data)
+                
+            else:
+                self.error.emit("控制器没有提供 get_wallpaper_data 方法")
+                
+        except Exception as e:
+            import traceback
+            print(f"异步刷新图库时出错: {e}")
+            print(traceback.format_exc())
+            self.error.emit(str(e))

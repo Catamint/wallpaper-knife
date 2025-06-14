@@ -5,7 +5,7 @@ from PyQt6.QtGui import QIcon, QMouseEvent
 class CustomTitleBar(QWidget):
     """自定义标题栏"""
     
-    def __init__(self, parent=None, icon_factory=None, title="壁纸管理器"):
+    def __init__(self, parent=None, icon_factory=None, title="壁纸刀"):
         super().__init__(parent)
         self.parent = parent
         self.icon_factory = icon_factory

@@ -14,7 +14,7 @@ class SystemTrayIcon(QSystemTrayIcon):
         super(SystemTrayIcon, self).__init__(icon, parent)
         
         # 设置工具提示
-        self.setToolTip("壁纸管理器")
+        self.setToolTip("壁纸刀")
         
         # 创建托盘菜单
         self.menu = QMenu(parent)

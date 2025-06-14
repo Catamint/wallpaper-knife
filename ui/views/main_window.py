@@ -96,7 +96,7 @@ class WallpaperMainWindow(FluentWindow):
     
     def initWindow(self):
         """初始化窗口"""
-        self.setWindowTitle("壁纸管理器")
+        self.setWindowTitle("壁纸刀")
         self.resize(900, 600)
         
         # 根据系统主题设置初始主题
@@ -162,7 +162,7 @@ class WallpaperMainWindow(FluentWindow):
         
         # 更新窗口标题
         display_name = info.get("display_name") or os.path.basename(info.get("path", ""))
-        self.setWindowTitle(f"壁纸管理器 - {display_name}")
+        self.setWindowTitle(f"壁纸刀 - {display_name}")
     
     def show_gallery(self, wallpaper_data):
         """显示图库数据"""
@@ -229,7 +229,7 @@ class WallpaperMainWindow(FluentWindow):
             # 显示通知
             if self.controller.model.manager.config.SHOW_NOTIFICATIONS:
                 self.tray_icon.showMessage(
-                    "壁纸管理器",
+                    "壁纸刀",
                     "应用程序已最小化到系统托盘，点击图标恢复。",
                     QSystemTrayIcon.MessageIcon.Information,
                     2000

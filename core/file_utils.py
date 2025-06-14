@@ -3,8 +3,8 @@ import hashlib
 import json
 
 class FileUtils:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self):
+        pass
 
     def calculate_file_hash(self, filepath):
         """计算文件MD5哈希值"""

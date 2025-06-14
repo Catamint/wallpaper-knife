@@ -16,7 +16,7 @@ class Config:
             # 默认配置
             self.default_settings = {
                 "app": {
-                    "name": "壁纸管理器",
+                    "name": "壁纸刀",
                     "version": "1.0.0",
                     "ui_framework": "qt",
                     "language": "zh_CN",
@@ -273,3 +273,69 @@ class Config:
             # 保存设置
             return self.save_settings()
         return False
+    def sync_from_qconfig(self, qconfig_file="config.json"):
+        """从QConfig配置文件同步设置"""
+        try:
+            import os
+            qconfig_path = os.path.join(self.BASE_DIR, qconfig_file)
+            
+            if os.path.exists(qconfig_path):
+                with open(qconfig_path, 'r', encoding='utf-8') as f:
+                    qconfig_data = json.load(f)
+                
+                # 从QConfig同步到应用配置
+                # 应用程序设置
+                if "App" in qconfig_data:
+                    if "Theme" in qconfig_data["App"]:
+                        self.settings["app"]["theme"] = qconfig_data["App"]["Theme"]
+                    if "AutoStart" in qconfig_data["App"]:
+                        self.settings["app"]["auto_start"] = qconfig_data["App"]["AutoStart"]
+                    if "RandomOnStartup" in qconfig_data["App"]:
+                        self.settings["app"]["random_on_startup"] = qconfig_data["App"]["RandomOnStartup"]
+                
+                # 目录设置
+                if "Directories" in qconfig_data:
+                    if "WallpaperDir" in qconfig_data["Directories"]:
+                        self.settings["directories"]["wallpaper"] = qconfig_data["Directories"]["WallpaperDir"]
+                    if "CacheDir" in qconfig_data["Directories"]:
+                        self.settings["directories"]["cache"] = qconfig_data["Directories"]["CacheDir"]
+                    if "ToolsDir" in qconfig_data["Directories"]:
+                        self.settings["directories"]["tools"] = qconfig_data["Directories"]["ToolsDir"]
+                
+                # 显示设置
+                if "Display" in qconfig_data:
+                    if "ShowNotifications" in qconfig_data["Display"]:
+                        self.settings["display"]["show_notifications"] = qconfig_data["Display"]["ShowNotifications"]
+                    if "EnableAnimations" in qconfig_data["Display"]:
+                        self.settings["display"]["enable_animations"] = qconfig_data["Display"]["EnableAnimations"]
+                
+                # Real-ESRGAN设置
+                if "RealESRGAN" in qconfig_data:
+                    if "Enabled" in qconfig_data["RealESRGAN"]:
+                        self.settings["realesrgan"]["enabled"] = qconfig_data["RealESRGAN"]["Enabled"]
+                    if "ExecutablePath" in qconfig_data["RealESRGAN"]:
+                        self.settings["realesrgan"]["executable"] = qconfig_data["RealESRGAN"]["ExecutablePath"]
+                    if "Scale" in qconfig_data["RealESRGAN"]:
+                        self.settings["realesrgan"]["scale"] = qconfig_data["RealESRGAN"]["Scale"]
+                    if "Model" in qconfig_data["RealESRGAN"]:
+                        self.settings["realesrgan"]["model"] = qconfig_data["RealESRGAN"]["Model"]
+                
+                # 托盘设置
+                if "Tray" in qconfig_data:
+                    if not "tray" in self.settings:
+                        self.settings["tray"] = {}
+                    if "MinimizeOnAutoStart" in qconfig_data["Tray"]:
+                        self.settings["tray"]["minimize_on_auto_start"] = qconfig_data["Tray"]["MinimizeOnAutoStart"]
+                    if "MinimizeOnClose" in qconfig_data["Tray"]:
+                        self.settings["tray"]["minimize_on_close"] = qconfig_data["Tray"]["MinimizeOnClose"]
+                
+                # 保存配置并更新内存中的属性
+                self.save_settings()
+                self._setup_properties()
+                return True
+            return False
+        except Exception as e:
+            print(f"从QConfig同步配置时出错: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
