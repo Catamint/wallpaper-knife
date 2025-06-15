@@ -396,20 +396,7 @@ class SettingsInterface(QFrame):
                 self._notify_settings_changed()  # 通知更改
         except Exception as e:
             self.show_error(f"选择Real-ESRGAN路径时出错: {str(e)}")
-    
-    def load_settings_values(self):
-        """从配置加载设置值到界面"""
-        print(f"加载设置值时出错")
-        self.show_error(f"加载设置失败")
-    
-    def cancel_changes(self):
-        """取消更改"""
-        self.show_error(f"取消更改时出错")
-    
-    def restore_defaults(self):
-        """恢复默认设置"""
-        self.show_error(f"恢复默认设置时出错")
-    
+
     def show_error(self, message):
         """显示错误信息"""
         InfoBar.error(
@@ -421,30 +408,3 @@ class SettingsInterface(QFrame):
             duration=5000,
             parent=self
         )
-    
-    def showEvent(self, event):
-        """在显示设置界面时自动加载配置"""
-        super().showEvent(event)
-        
-        # 初次显示时更新目录卡的显示内容
-        if not hasattr(self, '_settings_loaded') or not self._settings_loaded:
-            print("设置界面: 首次显示，更新目录卡显示")
-            self.wallpaper_dir_card.setContent(self.config.wallpaperDir.value)
-            self.cache_dir_card.setContent(self.config.cacheDir.value)
-            self.tools_dir_card.setContent(self.config.toolsDir.value)
-            self.realesrgan_path_card.setContent(self.config.realesrganPath.value)
-            self._settings_loaded = True
-    
-    def update_ui_from_config(self):
-        """从QConfig更新UI显示"""
-        try:
-            # 目录设置需要手动更新
-            self.wallpaper_dir_card.setContent(self.config.wallpaperDir.value)
-            self.cache_dir_card.setContent(self.config.cacheDir.value)
-            self.tools_dir_card.setContent(self.config.toolsDir.value)
-            self.realesrgan_path_card.setContent(self.config.realesrganPath.value)
-            
-            # 其他带有ConfigItem的设置卡会自动更新
-            
-        except Exception as e:
-            print(f"更新UI显示时出错: {e}")

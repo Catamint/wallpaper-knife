@@ -2,7 +2,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 import random
 import os
 from typing import Callable
-from core.manager import WallpaperManager
+from .manager import WallpaperManager
 from .. import wallpaperCfg
 class WallpaperModel(QObject):
     """壁纸数据模型，管理业务逻辑和应用状态，发送状态变化信号"""

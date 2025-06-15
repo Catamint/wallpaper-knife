@@ -26,29 +26,6 @@ class HomeInterface(QFrame):
     def setup_ui(self):
         """设置主页界面"""
         layout = QVBoxLayout(self)
-        # layout.setContentsMargins(0, 0, 0, 0)
-        # layout.setSpacing(0)
-        
-        # # 顶部标题区域
-        # title_layout = QHBoxLayout()
-        
-        # # 标题
-        # title_label = SubtitleLabel("壁纸预览")
-        # title_layout.addWidget(title_label)
-        
-        # # 顶部间隔
-        # title_layout.addStretch(1)
-        
-
-        
-        # # 设为壁纸按钮
-        # self.apply_button = PrimaryPushButton("设为壁纸")
-        # self.apply_button.setIcon(FIF.ACCEPT)
-        # self.apply_button.clicked.connect(self.safe_set_wallpaper)
-        # action_layout.addWidget(self.apply_button)
-        
-        # title_layout.addLayout(action_layout)
-        # layout.addLayout(title_layout)
         
         # 图像显示区域
         self.image_view = CropGraphicsView()

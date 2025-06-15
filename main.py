@@ -7,7 +7,7 @@ from PyQt6.QtGui import QIcon
 from qfluentwidgets import setTheme, Theme
 
 from core.file_utils import FileUtils
-from core.manager import WallpaperManager
+from app.models.manager import WallpaperManager
 from core.image_utils import ImageUtils
 from tools.realesrgan import RealesrganTool
 

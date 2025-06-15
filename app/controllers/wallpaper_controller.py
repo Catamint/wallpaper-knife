@@ -187,9 +187,6 @@ class WallpaperController(QObject):
             
         except Exception as e:
             show_error(self.view, "错误", f"裁剪失败: {str(e)}")
-        
-        # 裁剪完成后清除矩形
-        # self.view.clearCropRect()
     
     def _on_wallpaper_changed(self, key, info):
         """当前壁纸变化处理"""

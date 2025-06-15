@@ -173,11 +173,6 @@ class WallpaperMainWindow(FluentWindow):
         """关闭图库，返回主界面"""
         self.stackedWidget.setCurrentWidget(self.homeInterface)
     
-    def show_settings(self):
-        """显示设置"""
-        self.settingsInterface.load_settings_values()
-        self.stackedWidget.setCurrentWidget(self.settingsInterface)
-    
     def setup_tray_icon(self):
         """设置系统托盘图标"""
         app_icon = QIcon("app_icon.png")  # 替换为你的应用图标路径
