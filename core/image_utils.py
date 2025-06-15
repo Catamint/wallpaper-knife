@@ -2,8 +2,9 @@ from PIL import Image
 import os
 
 class ImageUtils:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self):
+        """初始化图像处理工具类"""
+        pass
         
     def fit_image_to_screen(self, image_path, cache_path, screen_width, screen_height):
         """将图片缩放到适合屏幕大小"""

@@ -3,7 +3,7 @@ import random
 import os
 from typing import Callable
 from core.manager import WallpaperManager
-
+from .. import wallpaperCfg
 class WallpaperModel(QObject):
     """壁纸数据模型，管理业务逻辑和应用状态，发送状态变化信号"""
     
@@ -265,7 +265,7 @@ class WallpaperModel(QObject):
         
         # 优先使用缓存文件
         if pic.cache_path:
-            cache_path = os.path.join(self.manager.config.CACHE_DIR, pic.cache_path)
+            cache_path = os.path.join(wallpaperCfg.cacheDir.value, pic.cache_path)
             if os.path.exists(cache_path):
                 self.manager.set_wallpaper(cache_path)
                 return True

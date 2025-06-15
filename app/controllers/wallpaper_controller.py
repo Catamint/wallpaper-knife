@@ -1,10 +1,13 @@
 from PyQt6.QtCore import QObject, pyqtSlot, QTimer
+from qfluentwidgets import setTheme, Theme
 import os
 import sys
 import winreg as reg
 from ..views.dialogs import ProgressDialog, show_error, show_info
 import threading, time
 import random
+
+from .. import wallpaperCfg
 
 class WallpaperController(QObject):
     """壁纸管理控制器，处理业务逻辑"""
@@ -15,10 +18,6 @@ class WallpaperController(QObject):
         self.image_utils = image_utils
         self.realesrgan = realesrgan_tool
         self.view = None  # Will be set later
-            
-        # 尝试从QConfig同步配置
-        if os.path.exists("config.json"):
-            self.model.manager.config.sync_from_qconfig()
 
         # 连接模型信号
         self.model.currentWallpaperChanged.connect(self._on_wallpaper_changed)
@@ -28,7 +27,7 @@ class WallpaperController(QObject):
         self.auto_change_timer.timeout.connect(self.random_wallpaper)
         
         # 根据配置设置定时器
-        interval = self.model.manager.config.WALLPAPER_CHANGE_INTERVAL
+        interval = wallpaperCfg.wallpaperChangeInterval.value
         if interval > 0:
             # 将分钟转换为毫秒
             self.auto_change_timer.start(interval * 60 * 1000)
@@ -158,7 +157,7 @@ class WallpaperController(QObject):
             # 保存裁剪后的图片
             name, ext = os.path.splitext(os.path.basename(info["path"]))
             cache_filename = f"cropped_{name}{ext}"
-            cache_path = os.path.join(self.model.manager.config.CACHE_DIR, cache_filename)
+            cache_path = os.path.join(wallpaperCfg.cacheDir.value, cache_filename)
             cropped_img.save(cache_path)
             
             # 获取屏幕分辨率
@@ -166,7 +165,7 @@ class WallpaperController(QObject):
             
             # 调整图片适配屏幕
             final_filename = f"fit_{name}{ext}"
-            final_cache_path = os.path.join(self.model.manager.config.CACHE_DIR, final_filename)
+            final_cache_path = os.path.join(wallpaperCfg.cacheDir.value, final_filename)
             
             # 根据需要缩小或放大图片
             if cropped_img.width() > 2*screen_width or cropped_img.height() > 2*screen_height:
@@ -362,10 +361,10 @@ class WallpaperController(QObject):
     def settings_changed(self):
         """当设置变更时的处理函数"""
         # 获取配置
-        config = self.model.manager.config
+        config = wallpaperCfg
         
         # 重新启动自动切换计时器
-        interval = config.WALLPAPER_CHANGE_INTERVAL
+        interval = config.wallpaperChangeInterval.value
         if hasattr(self, 'auto_change_timer'):
             if interval > 0:
                 # 将分钟转换为毫秒
@@ -375,7 +374,7 @@ class WallpaperController(QObject):
         
         # 应用自启动设置
         if hasattr(config, 'AUTO_START'):
-            self.set_auto_start(config.AUTO_START)
+            self.set_auto_start(config.autoStart.value)
         
         # 应用托盘设置
         # ...

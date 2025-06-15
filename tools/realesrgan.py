@@ -2,17 +2,19 @@ import subprocess
 import os
 from PIL import Image
 
+from app import wallpaperCfg
+
 class RealesrganTool:
-    def __init__(self, config):
-        self.config = config
+    def __init__(self):
+        self.realesrgan_path = wallpaperCfg.realesrganPath.value
         
     def upscale(self, input_path, output_path, scale_factor):
         """使用realesrgan进行超分辨率处理"""
-        if not os.path.exists(self.config.REALESRGAN_PATH):
+        if not os.path.exists(self.realesrgan_path):
             return False
             
         cmd = [
-            self.config.REALESRGAN_PATH,
+            self.realesrgan_path,
             "-i", input_path,
             "-o", output_path,
             # "--outscale", str(scale_factor),

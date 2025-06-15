@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt, pyqtSlot, QSize, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSlot, QSize
 from PyQt6.QtGui import QIcon, QPixmap, QAction, QColor
 from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QSizePolicy,
                             QPushButton, QScrollArea, QComboBox, QLineEdit, QCheckBox,
@@ -13,7 +13,7 @@ from qfluentwidgets import (FluentWindow, FluentIcon as FIF, NavigationItemPosit
                           ScrollArea, ExpandLayout, SettingCardGroup, SwitchSettingCard,
                           ComboBoxSettingCard, PushSettingCard, LineEdit, 
                           ConfigItem, QConfig, OptionsConfigItem, OptionsValidator, 
-                          BoolValidator, FolderValidator)
+                          BoolValidator, FolderValidator, pyqtSignal)
 import os
 
 from .. import wallpaperCfg
@@ -40,7 +40,7 @@ class SettingsInterface(QFrame):
         self._connect_signals()
         
         # 从应用配置同步设置
-        self.sync_from_app_config()
+        # self.sync_from_app_config()
     
     def setup_ui(self):
         """设置设置界面"""
@@ -96,7 +96,7 @@ class SettingsInterface(QFrame):
     def _connect_signals(self):
         """连接所有设置项的信号"""
         # 主题设置
-        self.config.defaultTheme.valueChanged.connect(self._on_theme_changed)
+        self.config.defaultTheme.valueChanged.connect(self._on_defaultTheme_changed)
         
         # 开机自启和其他开关设置
         self.config.autoStart.valueChanged.connect(self._on_auto_start_changed)
@@ -113,21 +113,11 @@ class SettingsInterface(QFrame):
         self.config.realesrganScale.valueChanged.connect(self._notify_settings_changed)
         self.config.realesrganModel.valueChanged.connect(self._notify_settings_changed)
     
-    def _on_theme_changed(self, theme):
+    def _on_defaultTheme_changed(self, defaultTheme):
         """主题改变时的处理"""
         # 应用主题
-        if theme == "light":
-            setTheme(Theme.LIGHT)
-        elif theme == "dark":
-            setTheme(Theme.DARK)
-        else:  # system
-            # 根据系统设置判断
-            import darkdetect
-            if darkdetect.isDark():
-                setTheme(Theme.DARK)
-            else:
-                setTheme(Theme.LIGHT)
-        
+        setTheme(defaultTheme)
+        self.config.set(self.config.defaultTheme, defaultTheme)
         self._notify_settings_changed()
     
     def _on_auto_start_changed(self, enabled):
@@ -138,123 +128,40 @@ class SettingsInterface(QFrame):
     
     def _on_wallpaper_dir_changed(self, folder):
         """壁纸目录改变时的处理"""
-        self.config.wallpaperDir.value = folder
+        self.config.set(self.config.wallpaperDir, folder)
         self._notify_settings_changed()
     
     def _on_cache_dir_changed(self, folder):
         """缓存目录改变时的处理"""
-        self.config.cacheDir.value = folder
+        self.config.set(self.config.cacheDir, folder)
         self._notify_settings_changed()
     
     def _on_tools_dir_changed(self, folder):
         """工具目录改变时的处理"""
-        self.config.toolsDir.value = folder
+        self.config.set(self.config.toolsDir, folder)
         self._notify_settings_changed()
     
     def _on_realesrgan_path_changed(self, path):
         """Real-ESRGAN路径改变时的处理"""
-        self.config.realesrganPath.value = path
+        self.config.set(self.config.realesrganPath, path)
         self._notify_settings_changed()
     
     def _notify_settings_changed(self):
         """通知设置已改变"""
         try:
             # 保存设置到配置文件
-            self.config.save()
-            
-            # 应用设置到应用程序
-            self._apply_settings_to_app()
-            
+            print("保存设置到配置文件")
+            # print(f"当前配置: {self.config}")
+            self.config.save()  # 保存配置
+            print("设置已保存")
             # 发出设置已更改信号
-            self.settingsChanged.emit()
+            # self.settingsChanged.emit()
             
         except Exception as e:
             import traceback
             print(f"保存设置时发生错误: {e}")
             print(traceback.format_exc())
             self.show_error(f"保存设置时出错: {str(e)}")
-    
-    def _apply_settings_to_app(self):
-        """将QConfig设置应用到应用程序"""
-        try:
-            app_config = self.controller.model.manager.config
-            
-            # 1. 同步应用基本配置
-            app_config.settings["app"]["theme"] = self.config.defaultTheme.value
-            app_config.settings["app"]["auto_start"] = self.config.autoStart.value
-            app_config.settings["app"]["random_on_startup"] = self.config.randomOnStartup.value
-            
-            # 2. 同步目录配置
-            app_config.settings["directories"]["wallpaper"] = self.config.wallpaperDir.value
-            app_config.settings["directories"]["cache"] = self.config.cacheDir.value
-            app_config.settings["directories"]["tools"] = self.config.toolsDir.value
-            
-            # 3. 同步显示设置
-            app_config.settings["display"]["show_notifications"] = self.config.notifications.value
-            app_config.settings["display"]["enable_animations"] = self.config.animations.value
-            
-            # 4. 同步Real-ESRGAN设置
-            app_config.settings["realesrgan"]["enabled"] = self.config.realesrganEnabled.value
-            app_config.settings["realesrgan"]["executable"] = self.config.realesrganPath.value
-            app_config.settings["realesrgan"]["scale"] = self.config.realesrganScale.value
-            app_config.settings["realesrgan"]["model"] = self.config.realesrganModel.value
-            
-            # 5. 同步托盘设置
-            if "tray" not in app_config.settings:
-                app_config.settings["tray"] = {}
-            app_config.settings["tray"]["minimize_on_auto_start"] = self.config.minimizeOnAutoStart.value
-            app_config.settings["tray"]["minimize_on_close"] = self.config.minimizeOnClose.value
-            
-            # 6. 保存到文件
-            app_config.save_settings()
-            
-            # 7. 更新内存中的属性
-            app_config._setup_properties()
-            
-        except Exception as e:
-            print(f"应用设置时出错: {e}")
-
-    def sync_from_app_config(self):
-        """从应用配置同步到QConfig"""
-        try:
-            app_config = self.controller.model.manager.config
-            
-            # 同步主题
-            self.config.defaultTheme.value = app_config.THEME
-            
-            # 同步开关项
-            self.config.autoStart.value = app_config.AUTO_START
-            self.config.randomOnStartup.value = app_config.settings["app"].get("random_on_startup", True)
-            
-            # 同步目录设置
-            self.config.wallpaperDir.value = app_config.WALLPAPER_DIR
-            self.config.cacheDir.value = app_config.CACHE_DIR
-            self.config.toolsDir.value = app_config.TOOLS_DIR
-            
-            # 同步显示设置
-            self.config.notifications.value = app_config.SHOW_NOTIFICATIONS
-            self.config.animations.value = app_config.ENABLE_ANIMATIONS
-            
-            # 同步Real-ESRGAN设置
-            self.config.realesrganEnabled.value = app_config.REALESRGAN_ENABLED
-            self.config.realesrganPath.value = app_config.REALESRGAN_PATH
-            self.config.realesrganScale.value = app_config.REALESRGAN_SCALE
-            self.config.realesrganModel.value = app_config.REALESRGAN_MODEL
-            
-            # 同步托盘设置
-            self.config.minimizeOnAutoStart.value = app_config.MINIMIZE_ON_AUTO_START
-            self.config.minimizeOnClose.value = app_config.MINIMIZE_ON_CLOSE
-            
-            # 保存QConfig到文件
-            self.config.save()
-            
-            # 更新界面显示
-            self.update_ui_from_config()
-            
-        except Exception as e:
-            print(f"从应用配置同步时出错: {e}")
-            import traceback
-            traceback.print_exc()
 
     def create_general_group(self):
         """创建常规设置组"""
@@ -492,262 +399,16 @@ class SettingsInterface(QFrame):
     
     def load_settings_values(self):
         """从配置加载设置值到界面"""
-        try:
-            config = self.controller.model.manager.config
-            
-            # 保存原始设置
-            self.original_settings = config.settings.copy() if hasattr(config, 'settings') else {}
-            
-            # 常规设置
-            theme_index = 0
-            if hasattr(config, 'THEME'):
-                if config.THEME == "dark":
-                    theme_index = 1
-                elif config.THEME == "system":
-                    theme_index = 2
-            self.theme_card.setValue(theme_index)
-            
-            lang_index = 0
-            if hasattr(config, 'LANGUAGE') and config.LANGUAGE == "en_US":
-                lang_index = 1
-            # self.language_card.setCurrentIndex(lang_index)
-            
-            if hasattr(config, 'AUTO_START'):
-                self.auto_start_card.setChecked(config.AUTO_START)
-            
-            # 随机启动设置
-            random_startup = config.settings.get("app", {}).get("random_on_startup", True) if hasattr(config, 'settings') else True
-            self.random_startup_card.setChecked(random_startup)
-            
-            # 目录设置
-            if hasattr(config, 'WALLPAPER_DIR'):
-                self.wallpaper_dir_card.setContent(config.WALLPAPER_DIR)
-            if hasattr(config, 'CACHE_DIR'):
-                self.cache_dir_card.setContent(config.CACHE_DIR)
-            if hasattr(config, 'TOOLS_DIR'):
-                self.tools_dir_card.setContent(config.TOOLS_DIR)
-            
-            # 显示设置
-            interval = getattr(config, 'WALLPAPER_CHANGE_INTERVAL', 0)
-            interval_index = 0
-            if interval == 5: interval_index = 1
-            elif interval == 10: interval_index = 2
-            elif interval == 30: interval_index = 3
-            elif interval == 60: interval_index = 4
-            elif interval == 120: interval_index = 5
-            elif interval == 240: interval_index = 6
-            elif interval == 480: interval_index = 7
-            # self.interval_card.setCurrentIndex(interval_index)
-            
-            if hasattr(config, 'SHOW_NOTIFICATIONS'):
-                self.notifications_card.setChecked(config.SHOW_NOTIFICATIONS)
-            if hasattr(config, 'ENABLE_ANIMATIONS'):
-                self.animations_card.setChecked(config.ENABLE_ANIMATIONS)
-            
-            # Real-ESRGAN设置
-            if hasattr(config, 'REALESRGAN_ENABLED'):
-                self.realesrgan_enabled_card.setChecked(config.REALESRGAN_ENABLED)
-            if hasattr(config, 'REALESRGAN_PATH'):
-                self.realesrgan_path_card.setContent(config.REALESRGAN_PATH)
-            
-            scale_index = max(0, min(getattr(config, 'REALESRGAN_SCALE', 2) - 2, 2))
-            # self.scale_card.setCurrentIndex(scale_index)
-            
-            model_index = 0
-            if hasattr(config, 'REALESRGAN_MODEL'):
-                if config.REALESRGAN_MODEL == "realesrgan-x4plus-anime":
-                    model_index = 1
-                elif config.REALESRGAN_MODEL == "realesrgnet-x4plus":
-                    model_index = 2
-            # self.model_card.setCurrentIndex(model_index)
-            
-            # 图库设置
-            thumbnail_size = getattr(config, 'THUMBNAIL_SIZE', 200)
-            # self.thumbnail_size_card.spinbox.setValue(thumbnail_size)
-            
-            items_per_row = getattr(config, 'ITEMS_PER_ROW', 0)
-            # self.items_per_row_card.spinbox.setValue(items_per_row)
-            
-            default_sort = getattr(config, 'DEFAULT_SORT', 'filename')
-            sort_index = 0
-            if default_sort == "date":
-                sort_index = 1
-            elif default_sort == "size":
-                sort_index = 2
-            # self.default_sort_card.setCurrentIndex(sort_index)
-            
-            show_excluded = getattr(config, 'SHOW_EXCLUDED', False)
-            # self.show_excluded_card.setChecked(show_excluded)
-            
-        except Exception as e:
-            print(f"加载设置值时出错: {e}")
-            self.show_error(f"加载设置失败: {str(e)}")
-    
-    def save_settings(self):
-        """保存设置"""
-        try:
-            config = self.controller.model.manager.config
-            
-            # 确保 settings 字典存在
-            if not hasattr(config, 'settings') or not config.settings:
-                config.settings = {
-                    "app": {},
-                    "directories": {},
-                    "display": {},
-                    "realesrgan": {},
-                    "gallery": {}
-                }
-            
-            # 常规设置
-            theme_values = ["light", "dark", "system"]
-            config.settings["app"]["theme"] = theme_values[self.theme_card.configItem]
-            
-            # lang_values = ["zh_CN", "en_US"]
-            # config.settings["app"]["language"] = lang_values[self.language_card.currentIndex()]
-            
-            config.settings["app"]["auto_start"] = self.auto_start_card.isChecked()
-            config.settings["app"]["random_on_startup"] = self.random_startup_card.isChecked()
-            config.settings["app"]["minimize_on_auto_start"] = self.minimize_startup_card.isChecked()
-            config.settings["app"]["minimize_on_close"] = self.minimize_close_card.isChecked()
-            
-            # 目录设置
-            config.settings["directories"]["wallpaper"] = self.wallpaper_dir_card.contentLabel.text()
-            config.settings["directories"]["cache"] = self.cache_dir_card.contentLabel.text()
-            config.settings["directories"]["tools"] = self.tools_dir_card.contentLabel.text()
-            
-            # 显示设置
-            interval_values = [0, 5, 10, 30, 60, 120, 240, 480]
-            # config.settings["display"]["wallpaper_change_interval"] = interval_values[self.interval_card.currentIndex()]
-            config.settings["display"]["show_notifications"] = self.notifications_card.isChecked()
-            config.settings["display"]["enable_animations"] = self.animations_card.isChecked()
-            
-            # Real-ESRGAN设置
-            config.settings["realesrgan"]["enabled"] = self.realesrgan_enabled_card.isChecked()
-            config.settings["realesrgan"]["executable"] = self.realesrgan_path_card.contentLabel.text()
-            # config.settings["realesrgan"]["scale"] = self.scale_card.currentIndex() + 2
-            
-            model_values = ["realesrgan-x4plus", "realesrgan-x4plus-anime", "realesrgnet-x4plus"]
-            # config.settings["realesrgan"]["model"] = model_values[self.model_card.currentIndex()]
-            
-            # 图库设置
-            # config.settings["gallery"]["thumbnail_size"] = self.thumbnail_size_card.spinbox.value()
-            # config.settings["gallery"]["items_per_row"] = self.items_per_row_card.spinbox.value()
-            
-            sort_values = ["filename", "date", "size"]
-            # config.settings["gallery"]["default_sort"] = sort_values[self.default_sort_card.currentIndex()]
-            # config.settings["gallery"]["show_excluded"] = self.show_excluded_card.isChecked()
-            
-            # 保存设置到文件
-            if config.save_settings():
-                # 重新设置属性
-                if hasattr(config, '_setup_properties'):
-                    config._setup_properties()
-                
-                # 显示成功消息
-                InfoBar.success(
-                    title='保存成功',
-                    content='设置已成功保存',
-                    orient=Qt.Orientation.Horizontal,
-                    isClosable=True,
-                    position=InfoBarPosition.BOTTOM_RIGHT,
-                    duration=3000,
-                    parent=self
-                )
-                
-                # 如果设置有变化，发出信号和通知控制器
-                if self.original_settings != config.settings:
-                    self.settingsChanged.emit()
-                    if hasattr(self.controller, 'settings_changed'):
-                        self.controller.settings_changed()
-                
-                return True
-            else:
-                self.show_error("无法保存设置文件")
-                return False
-        
-        except Exception as e:
-            import traceback
-            print(f"保存设置时发生错误: {e}")
-            print(traceback.format_exc())
-            self.show_error(f"保存设置时出错: {str(e)}")
-            return False
+        print(f"加载设置值时出错")
+        self.show_error(f"加载设置失败")
     
     def cancel_changes(self):
         """取消更改"""
-        try:
-            # 重新加载设置值，恢复到之前的状态
-            self.load_settings_values()
-            
-            InfoBar.info(
-                title='已取消',
-                content='设置更改已取消',
-                orient=Qt.Orientation.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                duration=2000,
-                parent=self
-            )
-        except Exception as e:
-            self.show_error(f"取消更改时出错: {str(e)}")
+        self.show_error(f"取消更改时出错")
     
     def restore_defaults(self):
         """恢复默认设置"""
-        try:
-            config = self.controller.model.manager.config
-            
-            # 如果配置对象有默认设置，使用它
-            if hasattr(config, 'default_settings'):
-                config.settings = config.default_settings.copy()
-            else:
-                # 否则设置一个基本的默认配置
-                config.settings = {
-                    "app": {
-                        "theme": "light",
-                        "language": "zh_CN",
-                        "auto_start": False,
-                        "random_on_startup": True,
-                        "minimize_on_auto_start": True,
-                        "minimize_on_close": True
-                    },
-                    "directories": {
-                        "wallpaper": "./wallpapers",
-                        "cache": "./cache",
-                        "tools": "./tools"
-                    },
-                    "display": {
-                        "wallpaper_change_interval": 0,
-                        "show_notifications": True,
-                        "enable_animations": True
-                    },
-                    "realesrgan": {
-                        "enabled": False,
-                        "executable": "",
-                        "scale": 2,
-                        "model": "realesrgan-x4plus"
-                    },
-                    "gallery": {
-                        "thumbnail_size": 200,
-                        "items_per_row": 0,
-                        "default_sort": "filename",
-                        "show_excluded": False
-                    }
-                }
-            
-            # 重新加载界面值
-            self.load_settings_values()
-            
-            InfoBar.success(
-                title='恢复完成',
-                content='已恢复默认设置',
-                orient=Qt.Orientation.Horizontal,
-                isClosable=True,
-                position=InfoBarPosition.BOTTOM_RIGHT,
-                duration=3000,
-                parent=self
-            )
-            
-        except Exception as e:
-            self.show_error(f"恢复默认设置时出错: {str(e)}")
+        self.show_error(f"恢复默认设置时出错")
     
     def show_error(self, message):
         """显示错误信息"""

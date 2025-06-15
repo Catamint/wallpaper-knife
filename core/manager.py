@@ -11,6 +11,8 @@ from PIL import Image  # 使用 Pillow 处理图像
 from typing import Dict, List, Optional, Tuple, Callable, Any, Union
 from .picture import Picture
 
+from app import wallpaperCfg # 确保配置类已正确导入
+
 class WallpaperIndex:
     """壁纸索引管理类"""
     
@@ -114,8 +116,8 @@ class WallpaperIndex:
 
 class WallpaperManager:
     """壁纸管理器"""
-    def __init__(self, config, file_utils):
-        self.config = config
+    def __init__(self, file_utils):
+        self.config = wallpaperCfg
         self.file_utils = file_utils
         self.index = WallpaperIndex()
         self.wallpaper_setter_thread = None
@@ -160,7 +162,7 @@ class WallpaperManager:
     
     def build_index(self, progress_callback: Callable = None) -> bool:
         """构建壁纸索引，增量更新"""
-        if not os.path.exists(self.config.WALLPAPER_DIR):
+        if not os.path.exists(self.config.wallpaperDir.value):
             return False
             
         # 先加载现有索引
@@ -171,11 +173,11 @@ class WallpaperManager:
         
         # 扫描文件系统
         image_files = []
-        for root, _, files in os.walk(self.config.WALLPAPER_DIR):
+        for root, _, files in os.walk(self.config.wallpaperDir.value):
             for file in files:
                 if file.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.webp')):
                     filepath = os.path.join(root, file)
-                    rel_path = os.path.relpath(filepath, self.config.WALLPAPER_DIR)
+                    rel_path = os.path.relpath(filepath, self.config.wallpaperDir.value)
                     image_files.append((rel_path, filepath))
         
         # 跟踪已处理文件，用于检测删除的文件
@@ -229,12 +231,12 @@ class WallpaperManager:
     
     def load_index(self) -> bool:
         """加载索引文件"""
-        if not os.path.exists(self.config.INDEX_FILE):
+        if not os.path.exists(self.config.indexFile.value):
             self.index = WallpaperIndex()
             return False
             
         try:
-            with open(self.config.INDEX_FILE, 'r', encoding='utf-8') as f:
+            with open(self.config.indexFile.value, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 self.index = WallpaperIndex.from_dict(data)
             return True
@@ -249,19 +251,20 @@ class WallpaperManager:
             return True  # 没有修改，不需要保存
             
         try:
+            indexFile = self.config.indexFile.value
             # 确保目录存在
-            os.makedirs(os.path.dirname(self.config.INDEX_FILE), exist_ok=True)
+            os.makedirs(os.path.dirname(indexFile), exist_ok=True)
             
             # 先写入临时文件，成功后再替换
-            temp_file = f"{self.config.INDEX_FILE}.tmp"
+            temp_file = f"{indexFile}.tmp"
             with open(temp_file, 'w', encoding='utf-8') as f:
                 json.dump(self.index.to_dict(), f, ensure_ascii=False, indent=2)
                 
             # 原子替换原文件
-            if os.path.exists(self.config.INDEX_FILE):
-                os.replace(temp_file, self.config.INDEX_FILE)
+            if os.path.exists(indexFile):
+                os.replace(temp_file, indexFile)
             else:
-                os.rename(temp_file, self.config.INDEX_FILE)
+                os.rename(temp_file, indexFile)
                 
             self.index.mark_saved()
             return True
@@ -367,7 +370,7 @@ class WallpaperManager:
     
     def cleanup_cache(self) -> int:
         """清理无效的缓存文件，返回清理的文件数量"""
-        if not os.path.exists(self.config.CACHE_DIR):
+        if not os.path.exists(self.config.cacheDir.value):
             return 0
             
         # 收集所有有效的缓存文件路径
@@ -378,10 +381,10 @@ class WallpaperManager:
         
         # 删除无效的缓存文件
         deleted_count = 0
-        for file in os.listdir(self.config.CACHE_DIR):
+        for file in os.listdir(self.config.cacheDir.value):
             if file not in valid_cache_files:
                 try:
-                    os.remove(os.path.join(self.config.CACHE_DIR, file))
+                    os.remove(os.path.join(self.config.cacheDir.value, file))
                     deleted_count += 1
                 except Exception as e:
                     print(f"删除缓存文件失败: {file}, 错误: {e}")

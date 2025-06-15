@@ -4,9 +4,8 @@ import argparse
 import random
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
-from qfluentwidgets import QConfig, setTheme, Theme
+from qfluentwidgets import setTheme, Theme
 
-from core.config import Config
 from core.file_utils import FileUtils
 from core.manager import WallpaperManager
 from core.image_utils import ImageUtils
@@ -17,7 +16,6 @@ from app.models.settings import wallpaperCfg  # 确保配置类已正确导入
 from app.models.wallpaper_model import WallpaperModel
 from app.controllers.wallpaper_controller import WallpaperController
 from app.views.main_window import WallpaperMainWindow
-# import icon
 
 def main():
     # 命令行参数
@@ -28,9 +26,8 @@ def main():
     args = parser.parse_args()
     
     # 初始化核心组件
-    config = Config()  # 这将加载settings.json
     file_utils = FileUtils()
-    wallpaper_manager = WallpaperManager(config, file_utils)
+    wallpaper_manager = WallpaperManager(file_utils)
     
     # 设置随机种子
     random.seed()
@@ -52,23 +49,11 @@ def main():
         # GUI模式
         app = QApplication(sys.argv)
         app.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), 'app_icon.png')))
-        
-        if wallpaperCfg.theme == 'dark':
-            setTheme(Theme.DARK)
-        elif wallpaperCfg.theme == 'light':
-            setTheme(Theme.LIGHT)
-        else:  # system
-            # 根据系统设置判断
-            import darkdetect
-            if darkdetect.isDark():
-                setTheme(Theme.DARK)
-            else:
-                setTheme(Theme.LIGHT)
 
         # 创建MVC组件
         model = WallpaperModel(wallpaper_manager)
-        image_utils = ImageUtils(config)
-        realesrgan_tool = RealesrganTool(config)
+        image_utils = ImageUtils()
+        realesrgan_tool = RealesrganTool()
         controller = WallpaperController(model, image_utils, realesrgan_tool)
         view = WallpaperMainWindow(controller)
         
@@ -81,6 +66,7 @@ def main():
             
         if controller.initialize():
             # 显示窗口
+            setTheme(wallpaperCfg.defaultTheme.value)
             view.show()
             sys.exit(app.exec())
 
