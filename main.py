@@ -12,11 +12,11 @@ from core.manager import WallpaperManager
 from core.image_utils import ImageUtils
 from tools.realesrgan import RealesrganTool
 
-from ui.models.settings import wallpaperCfg  # 确保配置类已正确导入
+from app.models.settings import wallpaperCfg  # 确保配置类已正确导入
 
-from ui.models.wallpaper_model import WallpaperModel
-from ui.controllers.wallpaper_controller import WallpaperController
-from ui.views.main_window import WallpaperMainWindow
+from app.models.wallpaper_model import WallpaperModel
+from app.controllers.wallpaper_controller import WallpaperController
+from app.views.main_window import WallpaperMainWindow
 # import icon
 
 def main():
