@@ -6,9 +6,9 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
 from qfluentwidgets import setTheme, Theme
 
-from core.file_utils import FileUtils
+from app.utils.file_utils import FileUtils
 from app.models.manager import WallpaperManager
-from core.image_utils import ImageUtils
+from app.utils.image_utils import ImageUtils
 from tools.realesrgan import RealesrganTool
 
 from app.models.settings import wallpaperCfg  # 确保配置类已正确导入
