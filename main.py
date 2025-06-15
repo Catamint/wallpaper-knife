@@ -4,12 +4,15 @@ import argparse
 import random
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
+from qfluentwidgets import QConfig, setTheme, Theme
 
 from core.config import Config
 from core.file_utils import FileUtils
 from core.manager import WallpaperManager
 from core.image_utils import ImageUtils
 from tools.realesrgan import RealesrganTool
+
+from ui.models.settings import wallpaperCfg  # 确保配置类已正确导入
 
 from ui.models.wallpaper_model import WallpaperModel
 from ui.controllers.wallpaper_controller import WallpaperController
@@ -49,6 +52,19 @@ def main():
         # GUI模式
         app = QApplication(sys.argv)
         app.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), 'app_icon.png')))
+        
+        if wallpaperCfg.theme == 'dark':
+            setTheme(Theme.DARK)
+        elif wallpaperCfg.theme == 'light':
+            setTheme(Theme.LIGHT)
+        else:  # system
+            # 根据系统设置判断
+            import darkdetect
+            if darkdetect.isDark():
+                setTheme(Theme.DARK)
+            else:
+                setTheme(Theme.LIGHT)
+
         # 创建MVC组件
         model = WallpaperModel(wallpaper_manager)
         image_utils = ImageUtils(config)

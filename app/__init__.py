@@ -1,0 +1,1 @@
+from .models.settings import wallpaperCfg
