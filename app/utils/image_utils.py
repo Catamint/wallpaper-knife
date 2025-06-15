@@ -1,15 +1,20 @@
 from PIL import Image
+import subprocess
+import hashlib
 import os
 
+from app import wallpaperCfg
+
 class ImageUtils:
-    def __init__(self):
-        """初始化图像处理工具类"""
-        pass
+
+    realesrgan_path = wallpaperCfg.realesrganPath.value
         
-    def fit_image_to_screen(self, image_path, cache_path, screen_width, screen_height):
+    def fit_image_to_screen(image_path, cache_path, screen_width, screen_height):
         """将图片缩放到适合屏幕大小"""
         img = Image.open(image_path)
         iw, ih = img.size
+        width_ratio = screen_width / iw
+        height_ratio = screen_height / ih
 
         # 判断是否需要缩小
         if iw > 2 * screen_width or ih > 2 * screen_height:
@@ -18,10 +23,51 @@ class ImageUtils:
             img = img.resize(new_size, Image.LANCZOS)
             img.save(cache_path)
             return cache_path
-
-        # 检查是否需要放大 - 调用tools模块处理
-        # 这里保持方法签名不变, 实际逻辑移至RealesrganTool类
-
-        # 不需要处理，直接保存副本
-        img.save(cache_path)
-        return cache_path
+        
+        elif width_ratio > 1 or height_ratio > 1:
+            # 需要放大
+            scale = int(max(width_ratio, height_ratio))
+            scale = max(2, min(scale, 8))  # 限制在2-8之间
+            scale = 4
+            if ImageUtils.upscale(image_path, cache_path, scale):
+                return cache_path
+            else:
+                # 超分失败，采用普通缩放
+                img.save(cache_path)
+                return cache_path
+        
+        else:
+            # 不需要处理，直接保存副本
+            img.save(cache_path)
+            return cache_path
+    
+    def upscale(input_path, output_path, scale_factor):
+        """使用realesrgan进行超分辨率处理"""
+        if not os.path.exists(ImageUtils.realesrgan_path):
+            return False
+            
+        cmd = [
+            ImageUtils.realesrgan_path,
+            "-i", input_path,
+            "-o", output_path,
+            # "--outscale", str(scale_factor),
+            "-n", "realesrgan-x4plus-anime"
+        ]
+        
+        try:
+            subprocess.run(cmd, check=True)
+            return True
+        except Exception as e:
+            print(f"超分辨率处理失败: {e}")
+            return False
+    
+    def calculate_file_hash(filepath):
+        """计算文件MD5哈希值"""
+        hash_md5 = hashlib.md5()
+        try:
+            with open(filepath, "rb") as f:
+                for chunk in iter(lambda: f.read(4096), b""):
+                    hash_md5.update(chunk)
+            return hash_md5.hexdigest()
+        except Exception:
+            return None

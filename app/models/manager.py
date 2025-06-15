@@ -10,6 +10,7 @@ from io import BytesIO
 from PIL import Image  # 使用 Pillow 处理图像
 from typing import Dict, List, Optional, Tuple, Callable, Any, Union
 from .picture import Picture
+from app.utils.image_utils import ImageUtils  # 确保图像处理工具类已正确导入
 
 from app import wallpaperCfg # 确保配置类已正确导入
 
@@ -116,9 +117,8 @@ class WallpaperIndex:
 
 class WallpaperManager:
     """壁纸管理器"""
-    def __init__(self, file_utils):
+    def __init__(self):
         self.config = wallpaperCfg
-        self.file_utils = file_utils
         self.index = WallpaperIndex()
         self.wallpaper_setter_thread = None
         self.wallpaper_setter_event = threading.Event()
@@ -188,7 +188,7 @@ class WallpaperManager:
             if progress_callback:
                 progress_callback(i, total_files, rel_path)
                 
-            file_hash = self.file_utils.calculate_file_hash(filepath)
+            file_hash = ImageUtils.calculate_file_hash(filepath)
             if not file_hash:
                 continue
                 

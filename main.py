@@ -4,30 +4,24 @@ import argparse
 import random
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
-from qfluentwidgets import setTheme, Theme
+from qfluentwidgets import setTheme
 
-from app.utils.file_utils import FileUtils
 from app.models.manager import WallpaperManager
-from app.utils.image_utils import ImageUtils
-from tools.realesrgan import RealesrganTool
-
-from app.models.settings import wallpaperCfg  # 确保配置类已正确导入
-
 from app.models.wallpaper_model import WallpaperModel
 from app.controllers.wallpaper_controller import WallpaperController
 from app.views.main_window import WallpaperMainWindow
+
+from app.models.settings import wallpaperCfg  # 确保配置类已正确导入
 
 def main():
     # 命令行参数
     parser = argparse.ArgumentParser(description='壁纸刀')
     parser.add_argument('--cli', action='store_true', help='使用命令行模式')
     parser.add_argument('--rebuild', action='store_true', help='重建索引')
-    parser.add_argument('--ui', choices=['tk', 'qt'], default='qt', help='选择UI框架 (tk/qt)')
     args = parser.parse_args()
     
     # 初始化核心组件
-    file_utils = FileUtils()
-    wallpaper_manager = WallpaperManager(file_utils)
+    wallpaper_manager = WallpaperManager()
     
     # 设置随机种子
     random.seed()
@@ -52,9 +46,7 @@ def main():
 
         # 创建MVC组件
         model = WallpaperModel(wallpaper_manager)
-        image_utils = ImageUtils()
-        realesrgan_tool = RealesrganTool()
-        controller = WallpaperController(model, image_utils, realesrgan_tool)
+        controller = WallpaperController(model)
         view = WallpaperMainWindow(controller)
         
         # 连接视图和控制器

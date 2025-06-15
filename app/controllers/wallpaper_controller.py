@@ -6,17 +6,16 @@ import winreg as reg
 from ..views.dialogs import ProgressDialog, show_error, show_info
 import threading, time
 import random
+from ..utils.image_utils import ImageUtils
 
 from .. import wallpaperCfg
 
 class WallpaperController(QObject):
     """壁纸管理控制器，处理业务逻辑"""
     
-    def __init__(self, model, image_utils, realesrgan_tool):
+    def __init__(self, model):
         super().__init__()
         self.model = model
-        self.image_utils = image_utils
-        self.realesrgan = realesrgan_tool
         self.view = None  # Will be set later
 
         # 连接模型信号
@@ -167,16 +166,8 @@ class WallpaperController(QObject):
             final_filename = f"fit_{name}{ext}"
             final_cache_path = os.path.join(wallpaperCfg.cacheDir.value, final_filename)
             
-            # 根据需要缩小或放大图片
-            if cropped_img.width() > 2*screen_width or cropped_img.height() > 2*screen_height:
-                # 缩小
-                self.image_utils.fit_image_to_screen(cache_path, final_cache_path, screen_width, screen_height)
-            elif cropped_img.width() < screen_width or cropped_img.height() < screen_height:
-                # 放大，使用realesrgan
-                self.realesrgan.fit_to_screen(cache_path, final_cache_path, screen_width, screen_height)
-            else:
-                # 尺寸合适，直接保存
-                cropped_img.save(final_cache_path)
+            # 根据需要缩小或放大图片，保存
+            ImageUtils.fit_image_to_screen(cache_path, final_cache_path, screen_width, screen_height)
             
             # 更新索引
             crop_region = {"x": crop_x, "y": crop_y, "width": crop_w, "height": crop_h}
