@@ -9,6 +9,8 @@ import random
 from ..utils.image_utils import ImageUtils
 
 from .. import wallpaperCfg
+from ..models.wallpaper_model import WallpaperModel
+from ..models import wallpaper_index
 
 class WallpaperController(QObject):
     """壁纸管理控制器，处理业务逻辑"""

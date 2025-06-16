@@ -17,6 +17,8 @@ from .settings_interface import SettingsInterface
 # 导入托盘类
 from .tray_icon import SystemTrayIcon
 
+from .. import wallpaperCfg
+
 class WallpaperMainWindow(FluentWindow):
     """使用QFluentWidgets的壁纸管理主窗口"""
     
@@ -222,7 +224,7 @@ class WallpaperMainWindow(FluentWindow):
             self.hide()
             
             # 显示通知
-            if self.controller.model.manager.config.SHOW_NOTIFICATIONS:
+            if wallpaperCfg.notifications.value:
                 self.tray_icon.showMessage(
                     "壁纸刀",
                     "应用程序已最小化到系统托盘，点击图标恢复。",

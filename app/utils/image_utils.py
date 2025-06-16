@@ -3,7 +3,7 @@ import subprocess
 import hashlib
 import os
 
-from app import wallpaperCfg
+from app.models.settings import wallpaperCfg
 
 class ImageUtils:
 
