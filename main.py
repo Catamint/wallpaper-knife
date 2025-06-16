@@ -7,7 +7,7 @@ from PyQt6.QtGui import QIcon
 from qfluentwidgets import setTheme
 
 from app.models.wallpaper_setter import WallpaperSetter
-from app.models.wallpaper_model import WallpaperModel
+# from app.models.wallpaper_model import WallpaperModel
 from app.controllers.wallpaper_controller import WallpaperController
 from app.views.main_window import WallpaperMainWindow
 
@@ -45,7 +45,7 @@ def main():
         app.setWindowIcon(QIcon(os.path.join(os.path.dirname(__file__), 'app_icon.png')))
 
         # 创建MVC组件
-        model = WallpaperModel(wallpaper_manager)
+        # model = WallpaperModel(wallpaper_manager)
         controller = WallpaperController()
         view = WallpaperMainWindow(controller)
         
