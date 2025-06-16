@@ -189,7 +189,7 @@ class GalleryInterface(QFrame):
                 
                 # 获取已排除的壁纸列表
                 self.excluded_files = {key for key, info in self.wallpaper_data.items() 
-                                      if info.get("excluded", False)}
+                                      if not info.excluded}
                 print(f"已排除的壁纸: {len(self.excluded_files)} 个")
                 
             # 无论如何都刷新显示
@@ -284,7 +284,7 @@ class GalleryInterface(QFrame):
         filtered_data = {}
         
         for filename, info in self.wallpaper_data.items():
-            is_excluded = info.get("excluded", False)
+            is_excluded = info.excluded == True
             
             # 应用筛选
             filter_index = self.filter_combo.currentIndex()
@@ -333,7 +333,7 @@ class GalleryInterface(QFrame):
     def _populate_layout(self, sorted_items):
         """使用流布局填充缩略图"""
         for filename, info in sorted_items:
-            is_excluded = info.get("excluded", False)
+            is_excluded = info.excluded == True
             thumbnail = ThumbnailWidget(filename, info, is_excluded=is_excluded)
             
             # 连接缩略图信号 - 使用新的信号名
@@ -424,9 +424,7 @@ class GalleryInterface(QFrame):
     def _on_include_wallpaper(self, filename):
         """将壁纸从排除列表移除"""
         try:
-            if filename in self.excluded_files:
-                self.excluded_files.remove(filename)
-            
+           
             # 更新数据中的排除状态
             if filename in self.wallpaper_data:
                 self.wallpaper_data[filename]["excluded"] = False
@@ -493,7 +491,7 @@ class GalleryInterface(QFrame):
                 
                 # 获取已排除的壁纸列表
                 self.excluded_files = {key for key, info in self.wallpaper_data.items() 
-                                      if info.get("excluded", False)}
+                                      if info.excluded == True}
             
             # 刷新UI显示
             self._display_wallpaper_data(data)
@@ -631,7 +629,7 @@ class GalleryRefreshThread(QThread):
                     self.progress.emit(int((i / total) * 100) if total > 0 else 0)
                     
                     # 应用过滤规则 (如果数据量大，这部分可以移到主线程做)
-                    is_excluded = info.get("excluded", False)
+                    is_excluded = info.excluded == True
                     
                     # 应用筛选
                     if self.filter_mode == "included" and is_excluded:  # 只显示已启用

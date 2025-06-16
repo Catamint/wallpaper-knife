@@ -9,10 +9,10 @@ import datetime
 from io import BytesIO
 from PIL import Image  # 使用 Pillow 处理图像
 from typing import Dict, List, Optional, Tuple, Callable, Any, Union
-from .picture import Picture
+from .picture_item import Picture
 from app.utils.image_utils import ImageUtils  # 确保图像处理工具类已正确导入
 
-class WallpaperManager:
+class WallpaperSetter:
     """壁纸管理器"""
     def __init__(self):
         self.wallpaper_setter_thread = None

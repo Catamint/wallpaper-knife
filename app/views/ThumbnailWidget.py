@@ -164,7 +164,7 @@ class ThumbnailWidget(QWidget):
         # self.layout.setSpacing(4)
 
         # 文件名标签
-        display_name = info.get("display_name", filename)
+        display_name = info.display_name
         if len(display_name) > 100:
             display_name = display_name[:97] + "..."        
         # 创建图片标签
@@ -222,32 +222,13 @@ class ThumbnailWidget(QWidget):
     def _load_thumbnail(self):
         """加载缩略图"""
         try:
-            if "view_pic" in self.info and self.info["view_pic"]:
-                # 从base64加载
-                base64_data = self.info["view_pic"]
-                pixmap = QPixmap()
-                if pixmap.loadFromData(QByteArray.fromBase64(base64_data.encode())):
-                    self.image_label.setPixmap(pixmap)
-                else:
-                    self.image_label.setText("加载失败\n无效的图片数据")
-            elif "path" in self.info:
-                # 从文件加载
-                pixmap = QPixmap(self.info["path"])
-                if not pixmap.isNull():
-                    # 设置缩略图
-                    self.image_label.setPixmap(pixmap)
-                    
-                    # 如果需要，创建并保存缩略图的base64
-                    if "view_pic" not in self.info:
-                        buffer = QBuffer()
-                        buffer.open(QIODevice.OpenModeFlag.WriteOnly)
-                        pixmap.save(buffer, "JPG", 80)
-                        base64_data = base64.b64encode(buffer.data()).decode()
-                        self.info["view_pic"] = base64_data
-                else:
-                    self.image_label.setText("加载失败\n无效的图片")
+            # 从base64加载
+            base64_data = self.info.get_thumbnail_base64()
+            pixmap = QPixmap()
+            if pixmap.loadFromData(QByteArray.fromBase64(base64_data.encode())):
+                self.image_label.setPixmap(pixmap)
             else:
-                self.image_label.setText("无图片路径")
+                self.image_label.setText("加载失败\n无效的图片数据")
         
         except Exception as e:
             # 加载失败时显示占位图

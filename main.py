@@ -6,7 +6,7 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QIcon
 from qfluentwidgets import setTheme
 
-from app.models.manager import WallpaperManager
+from app.models.wallpaper_setter import WallpaperSetter
 from app.models.wallpaper_model import WallpaperModel
 from app.controllers.wallpaper_controller import WallpaperController
 from app.views.main_window import WallpaperMainWindow
@@ -21,7 +21,7 @@ def main():
     args = parser.parse_args()
     
     # 初始化核心组件
-    wallpaper_manager = WallpaperManager()
+    wallpaper_manager = WallpaperSetter()
     
     # 设置随机种子
     random.seed()
@@ -46,7 +46,7 @@ def main():
 
         # 创建MVC组件
         model = WallpaperModel(wallpaper_manager)
-        controller = WallpaperController(model)
+        controller = WallpaperController()
         view = WallpaperMainWindow(controller)
         
         # 连接视图和控制器

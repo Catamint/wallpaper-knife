@@ -2,7 +2,6 @@ from PyQt6.QtCore import QObject, pyqtSignal
 import random
 import os
 from typing import Callable
-from .manager import WallpaperManager
 
 from .. import wallpaperCfg
 from . import wallpaper_index
@@ -79,68 +78,39 @@ class WallpaperModel(QObject):
             # 列表为空，清除当前键
             self.current_key = None
             self._notify_current_changed()
-    
-    def set_view_settings(self, **kwargs):
-        """设置视图参数"""
-        settings_changed = False
-        
-        for key, value in kwargs.items():
-            if key in self.view_settings and self.view_settings[key] != value:
-                self.view_settings[key] = value
-                settings_changed = True
-        
-        # 只有在设置实际变化时才更新
-        if settings_changed:
-            self._update_filtered_keys()
-    
-    def get_all_wallpapers(self):
-        """获取所有壁纸信息 (包括已排除的)"""
-        result = {}
-        for key in wallpaper_index.get_all_keys():
-            pic = wallpaper_index.get_picture(key)
-            if pic:
-                result[key] = pic.to_dict()
-    
-        # 调试信息
-        print(f"模型返回的壁纸数量: {len(result)}")
-        return result
-    
-    def get_excluded_wallpapers(self):
-        """获取所有已排除的壁纸键列表"""
-        return wallpaper_index.get_filtered_keys(excluded=True)
-    
-    def exclude_wallpaper(self, key):
-        """排除指定壁纸"""
-        pic = wallpaper_index.get_picture(key)
-        if not pic:
-            return False
+
+    # def exclude_wallpaper(self, key):
+    #     """排除指定壁纸"""
+    #     pic = wallpaper_index.get_picture(key)
+    #     if not pic:
+    #         return False
             
-        pic.set_excluded(True)
-        # 保存更改
-        wallpaper_index.save()
+    #     pic.set_excluded(True)
+    #     # 保存更改
+    #     wallpaper_index.save()
         
-        # 如果当前设置不显示已排除壁纸，需要更新过滤列表
-        if not self.view_settings["show_excluded"]:
-            self._update_filtered_keys()
-            
-        return True
+    #     # 如果当前设置不显示已排除壁纸，需要更新过滤列表
+    #     if not self.view_settings["show_excluded"]:
+    #         self._update_filtered_keys()
+
+    #     return True
     
-    def include_wallpaper(self, key):
-        """恢复被排除的壁纸"""
-        pic = wallpaper_index.get_picture(key)
-        if not pic:
-            return False
-            
-        pic.set_excluded(False)
-        # 保存更改
-        wallpaper_index.save()
-        
-        # 如果当前设置不显示已排除壁纸，需要更新过滤列表
-        if not self.view_settings["show_excluded"]:
-            self._update_filtered_keys()
-            
-        return True
-    
+    # def include_wallpaper(self, key):
+    #     """恢复被排除的壁纸"""
+    #     pic = wallpaper_index.get_picture(key)
+    #     if not pic:
+    #         return False
+
+    #     pic.set_excluded(False)
+    #     # 保存更改
+    #     wallpaper_index.save()
+
+    #     # 如果当前设置不显示已排除壁纸，需要更新过滤列表
+    #     if not self.view_settings["show_excluded"]:
+    #         self._update_filtered_keys()
+
+    #     return True
+
     def exclude_current_wallpaper(self):
         """排除当前壁纸"""
         if not self.current_key:
@@ -150,7 +120,7 @@ class WallpaperModel(QObject):
     
     def set_current_key(self, key):
         """设置当前壁纸键"""
-        if key not in wallpaper_index.wallpaper_index:
+        if key not in wallpaper_index.picture_index:
             return False
             
         old_key = self.current_key

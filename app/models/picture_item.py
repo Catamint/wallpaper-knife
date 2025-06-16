@@ -1,7 +1,9 @@
 import os
 import datetime
 from typing import Dict, List, Optional, Tuple, Callable, Any, Union
-
+import base64
+from PIL import Image
+from io import BytesIO
 class Picture:
     """图片对象，封装图片的所有属性和处理方法"""
     
@@ -51,6 +53,14 @@ class Picture:
             "added_date": self.added_date
         }
     
+    # 根据文件名或
+    def get_key(self) -> str:
+        """生成唯一键"""
+        if not self.key:
+            # 使用文件哈希和相对路径生成唯一键
+            self.key = f"{self.hash[:12]}_{os.path.basename(self.path)}"
+        return self.key
+    
     def update_path(self, new_path: str, new_relative_path: str) -> None:
         """更新路径"""
         self.path = new_path
@@ -91,3 +101,37 @@ class Picture:
     def mark_saved(self) -> None:
         """标记为已保存"""
         self._modified = False
+
+    def get_thumbnail_base64(self) -> Optional[str]:
+        """获取缩略图的base64编码"""
+        # 如果已有缩略图，直接返回
+        if self.view_pic:
+            return self.view_pic
+        
+        # 否则生成缩略图
+        thumbnail = self._create_thumbnail_base64()
+        if thumbnail:
+            self.set_thumbnail(thumbnail)
+        
+        return thumbnail
+    
+    
+    def _create_thumbnail_base64(self, max_size: Tuple[int, int] = (120, 120)) -> Optional[str]:
+        """创建图片缩略图并返回base64编码"""
+
+        image_path = self.path
+        try:
+            with Image.open(image_path) as img:
+                img.thumbnail(max_size, Image.LANCZOS)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                
+                buffer = BytesIO()
+                img.save(buffer, format='JPEG', quality=85)
+                buffer.seek(0)
+                
+                return base64.b64encode(buffer.read()).decode('utf-8')
+                
+        except Exception as e:
+            print(f"创建缩略图失败: {image_path}, 错误: {e}")
+            return None
