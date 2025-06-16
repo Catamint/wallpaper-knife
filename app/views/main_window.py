@@ -45,6 +45,7 @@ class WallpaperMainWindow(FluentWindow):
         # 连接裁剪请求信号
         if hasattr(self.homeInterface, 'cropRequested'):
             self.homeInterface.cropRequested.connect(self.handle_crop_request)
+        self.controller.currentWallpaperChanged.connect(self.update_wallpaper)
         
     def handle_crop_request(self, crop_rect):
         """处理裁剪请求"""
@@ -152,7 +153,7 @@ class WallpaperMainWindow(FluentWindow):
             next_mode = True
         self.load_theme(next_mode)
     
-    def update_wallpaper(self, key, info):
+    def update_wallpaper(self, info):
         """更新显示的壁纸
         
         Args:
@@ -160,10 +161,10 @@ class WallpaperMainWindow(FluentWindow):
             info: 壁纸的详细信息字典
         """
         # 委托给主页界面处理
-        self.homeInterface.update_wallpaper(key, info)
+        self.homeInterface.update_wallpaper(info)
         
         # 更新窗口标题
-        display_name = info.get("display_name") or os.path.basename(info.get("path", ""))
+        display_name = info.display_name
         self.setWindowTitle(f"壁纸刀 - {display_name}")
     
     def show_gallery(self, wallpaper_data):

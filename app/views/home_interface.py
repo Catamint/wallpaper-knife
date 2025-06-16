@@ -7,7 +7,7 @@ import os  # 确保导入os模块
 from qfluentwidgets import (FluentWindow, FluentIcon as FIF, NavigationItemPosition,
                           ToolButton, PrimaryPushButton, TransparentToolButton, 
                           SwitchButton, ComboBox, SubtitleLabel, CaptionLabel, 
-                          setTheme, Theme, InfoBar, InfoBarPosition,PrimaryToolButton,ToolTipFilter)
+                          setTheme, Theme, InfoBar, InfoBarPosition, PrimaryToolButton, ToolTipFilter)
 
 from .crop_view import CropGraphicsView
 
@@ -89,8 +89,6 @@ class HomeInterface(QFrame):
         self.crop_button.clicked.connect(self.on_apply_crop)
         bottom_layout.addWidget(self.crop_button)
         self.info_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        # self.crop_button.setEnabled(False)  # 初始禁用，等待裁剪区域选择
-        # self.image_view.cropRectChanged.connect(lambda: self.crop_button.setEnabled(True))
 
         layout.addLayout(bottom_layout)
     
@@ -186,34 +184,46 @@ class HomeInterface(QFrame):
             parent=self
         )
     
-    def update_wallpaper(self, key, info):
+    def update_wallpaper(self, picture):
         """更新显示的壁纸
         
         Args:
-            key (str): 壁纸的键
-            info (dict): 壁纸信息
+            picture (Picture): 壁纸对象
         """
         try:
+            if picture is None:
+                raise Exception("无效的壁纸对象")
+                
             # 加载图片
-            pixmap = QPixmap(info["path"])
+            pixmap = QPixmap(picture.path)
             if pixmap.isNull():
-                raise Exception("无法加载图片")
+                raise Exception(f"无法加载图片: {picture.path}")
                 
             # 显示图片
             self.image_view.setImage(pixmap)
             
-            # 更新状态 - 适配新的模型结构
-            display_name = info.get("display_name", os.path.basename(info["path"]))
+            # 更新状态
+            display_name = picture.display_name
             
-            # 从模型获取当前索引位置和总数
-            current_index = self.controller.model.get_current_index() + 1  # 从1开始计数
-            total = len(self.controller.model.filtered_keys)
+            # 从控制器获取当前索引位置和总数
+            filtered_pictures = self.controller.index_manager.get_filtered_pictures(excluded=False)
+            
+            try:
+                current_index = filtered_pictures.index(picture) + 1  # 从1开始计数
+            except ValueError:
+                # 如果当前图片不在过滤列表中，可能是排除状态
+                current_index = 0
+                
+            total = len(filtered_pictures)
             
             # 更新信息标签
-            self.info_label.setText(f"{display_name} ({current_index}/{total})")
+            if current_index > 0:
+                self.info_label.setText(f"{display_name} ({current_index}/{total})")
+            else:
+                self.info_label.setText(f"{display_name} (已排除)")
             
         except Exception as e:
             self.show_error(f'加载图片失败: {str(e)}')
             # 尝试排除问题壁纸
-            if hasattr(self.controller, 'exclude_current'):
+            if hasattr(self.controller, 'exclude_current') and picture == self.controller.current_picture:
                 self.controller.exclude_current()
