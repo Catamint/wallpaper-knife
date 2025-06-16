@@ -28,6 +28,11 @@ class WallpaperConfig(QConfig):
     indexFile = ConfigItem("Directories", "IndexFile", INDEX_FILE, None)
 
     # 显示设置
+    autoSwitchInterval = OptionsConfigItem(
+        "Display", "AutoSwitchInterval", 
+        30, 
+        OptionsValidator([-1, 1, 5, 10, 15, 30, 60, 120, 300])
+    )
     notifications = ConfigItem("Display", "ShowNotifications", True, BoolValidator())
     animations = ConfigItem("Display", "EnableAnimations", True, BoolValidator())
     

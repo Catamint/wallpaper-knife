@@ -33,6 +33,17 @@ class WallpaperController(QObject):
             # 将分钟转换为毫秒
             self.auto_change_timer.start(interval * 60 * 1000)
 
+    def set_auto_switch_interval(self, interval):
+        """设置自动切换壁纸的间隔"""
+        if interval > 0:
+            # 将分钟转换为毫秒
+            self.auto_change_timer.start(interval * 60 * 1000)
+        else:
+            self.auto_change_timer.stop()
+        
+        # 更新配置
+        wallpaperCfg.save()
+
     def set_view(self, view):
         """设置视图"""
         self.view = view

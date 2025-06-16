@@ -117,17 +117,6 @@ class IndexManager:
         self.total_count = 0
         self.last_updated = None
         self._modified = False
-
-    # def save(self) -> bool:
-    #     """保存索引到文件"""
-    #     try:
-    #         with open(wallpaperCfg.indexFile, 'w', encoding='utf-8') as f:
-    #             json.dump(self.to_dict(), f, ensure_ascii=False, indent=2)
-    #         self.mark_saved()
-    #         return True
-    #     except Exception as e:
-    #         print(f"保存索引失败: {e}")
-    #         return False
         
     def _start_auto_save(self, interval: int = 300) -> None:
         """启动自动保存定时器"""

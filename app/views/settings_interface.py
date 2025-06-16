@@ -105,6 +105,7 @@ class SettingsInterface(QFrame):
         self.config.minimizeOnClose.valueChanged.connect(self._notify_settings_changed)
         
         # 显示设置
+        self.config.autoSwitchInterval.valueChanged.connect(self._on_autoSwitchInterval_changed)
         self.config.notifications.valueChanged.connect(self._notify_settings_changed)
         self.config.animations.valueChanged.connect(self._notify_settings_changed)
         
@@ -125,37 +126,19 @@ class SettingsInterface(QFrame):
         if hasattr(self.controller, 'set_auto_start'):
             self.controller.set_auto_start(enabled)
         self._notify_settings_changed()
-    
-    def _on_wallpaper_dir_changed(self, folder):
-        """壁纸目录改变时的处理"""
-        self.config.set(self.config.wallpaperDir, folder)
-        self._notify_settings_changed()
-    
-    def _on_cache_dir_changed(self, folder):
-        """缓存目录改变时的处理"""
-        self.config.set(self.config.cacheDir, folder)
-        self._notify_settings_changed()
-    
-    def _on_tools_dir_changed(self, folder):
-        """工具目录改变时的处理"""
-        self.config.set(self.config.toolsDir, folder)
-        self._notify_settings_changed()
-    
-    def _on_realesrgan_path_changed(self, path):
-        """Real-ESRGAN路径改变时的处理"""
-        self.config.set(self.config.realesrganPath, path)
+
+    def _on_autoSwitchInterval_changed(self, interval):
+        """自动切换间隔改变时的处理"""
+        if hasattr(self.controller, 'set_auto_switch_interval'):
+            self.controller.set_auto_switch_interval(interval)
         self._notify_settings_changed()
     
     def _notify_settings_changed(self):
-        """通知设置已改变"""
+        """设置改变的final处理"""
         try:
-            # 保存设置到配置文件
-            print("保存设置到配置文件")
             # print(f"当前配置: {self.config}")
             self.config.save()  # 保存配置
             print("设置已保存")
-            # 发出设置已更改信号
-            # self.settingsChanged.emit()
             
         except Exception as e:
             import traceback
@@ -263,15 +246,16 @@ class SettingsInterface(QFrame):
         """创建显示设置组"""
         display_group = SettingCardGroup("显示设置", self.scroll_content)
         
-        # # 自动随机切换间隔
-        # self.interval_card = ComboBoxSettingCard(
-        #     FIF.STOP_WATCH,
-        #     "自动随机切换间隔",
-        #     "壁纸自动随机切换的时间间隔",
-        #     texts=["禁用", "5分钟", "10分钟", "30分钟", "1小时", "2小时", "4小时", "8小时"],
-        #     parent=display_group
-        # )
-        # display_group.addSettingCard(self.interval_card)
+        # 自动随机切换间隔
+        self.interval_card = ComboBoxSettingCard(
+            self.config.autoSwitchInterval,
+            FIF.STOP_WATCH,
+            "自动随机切换间隔",
+            "壁纸自动随机切换的时间间隔",
+            texts=["禁用", "1分钟", "5分钟", "10分钟", "30分钟", "1小时", "2小时", "4小时", "8小时"],
+            parent=display_group
+        )
+        display_group.addSettingCard(self.interval_card)
         
         # 显示通知
         self.notifications_card = SwitchSettingCard(
