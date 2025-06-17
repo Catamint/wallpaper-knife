@@ -39,3 +39,5 @@ REGISTRY_RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 
 # 默认设置
 DEFAULT_ROTATION_INTERVAL = 30 * 60  # 30 分钟
+
+DEBUG_MODE = False  # 是否启用调试模式

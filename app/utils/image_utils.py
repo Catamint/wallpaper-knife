@@ -2,6 +2,7 @@ from PIL import Image
 import subprocess
 import hashlib
 import os
+from app import config
 
 from app.models.settings import wallpaperCfg
 
@@ -49,7 +50,7 @@ class ImageUtils:
         """使用realesrgan进行超分辨率处理"""
         if not os.path.exists(ImageUtils.realesrgan_path):
             return False
-            
+
         cmd = [
             ImageUtils.realesrgan_path,
             "-i", input_path,
@@ -57,9 +58,13 @@ class ImageUtils:
             # "--outscale", str(scale_factor),
             "-n", "realesrgan-x4plus-anime"
         ]
-        
+
         try:
-            subprocess.run(cmd, check=True)
+            subprocess.run(
+                cmd,
+                check=True,
+                creationflags=subprocess.CREATE_NO_WINDOW if not config.DEBUG_MODE else 0
+            )
             return True
         except Exception as e:
             print(f"超分辨率处理失败: {e}")

@@ -31,7 +31,7 @@ class WallpaperController(QObject):
         # 初始化索引管理器
         self.index_manager = IndexManager()
         
-        # 当前壁纸
+        # 当前图片
         self.current_picture: Optional[Picture] = None
         
         # 创建定时器用于自动随机切换壁纸

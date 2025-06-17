@@ -68,22 +68,16 @@ class IndexManager:
     def remove_picture(self, picture_or_key: Union[Picture, str]) -> bool:
         """删除图片"""
         if isinstance(picture_or_key, Picture):
-            # 查找图片对应的键
-            for key, pic in self.picture_index.items():
-                if pic is picture_or_key:
-                    del self.picture_index[key]
-                    self._modified = True
-                    self.recount()
-                    return True
-            return False
+            key = picture_or_key.get_key()
         else:
             key = picture_or_key
-            if key in self.picture_index:
-                del self.picture_index[key]
-                self._modified = True
-                self.recount()
-                return True
-            return False
+
+        if key in self.picture_index:
+            del self.picture_index[key]
+            self._modified = True
+            self.recount()
+            return True
+        return False
     
     def get_picture(self, key: str) -> Optional[Picture]:
         """获取图片"""
@@ -91,14 +85,6 @@ class IndexManager:
         if pic:
             pic.update_access_time()
         return pic
-    
-    def get_picture_by_hash(self, hash_value: str) -> Optional[Picture]:
-        """通过哈希值获取图片"""
-        for pic in self.picture_index.values():
-            if pic.hash == hash_value:
-                pic.update_access_time()
-                return pic
-        return None
     
     def get_key_for_picture(self, picture: Picture) -> Optional[str]:
         """获取图片对应的键"""
