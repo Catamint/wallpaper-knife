@@ -246,7 +246,7 @@ class IndexManager:
                 
                 # 路径可能有变化
                 if pic.path != filepath:
-                    pic.update_path(filepath, rel_path)
+                    pic.update_path(filepath)
                     
                 # 如果键名不同，更新键名（例如文件被重命名）
                 if existing_key != key:
@@ -257,7 +257,6 @@ class IndexManager:
                 # 新文件，创建新的Picture对象
                 new_pic = Picture(
                     path=filepath, 
-                    relative_path=rel_path,
                     file_hash=file_hash,
                     display_name=filename
                 )
@@ -390,7 +389,13 @@ class IndexManager:
             return False
         
         try:
-            setter.set_wallpaper(pic.path, async_mode)     
+            if pic.cache_path:
+                # 使用缓存路径
+                pic_path = pic.cache_path
+            else:
+                # 使用原始路径
+                pic_path = pic.path
+            setter.set_wallpaper(pic_path, async_mode)     
             self.current_key = pic.get_key()
             return True
         except Exception as e:

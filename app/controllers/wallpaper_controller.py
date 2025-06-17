@@ -252,9 +252,11 @@ class WallpaperController(QObject):
             # 更新裁剪区域
             crop_region = {"x": crop_x, "y": crop_y, "width": crop_w, "height": crop_h}
             self.current_picture.update_crop(crop_region, final_cache_path)
+            # 更新图片路径
+            self.current_picture.cache_path = (final_cache_path)
             
             # 设置为壁纸（使用裁剪后的图片路径）
-            self.index_manager.set_wallpaper(final_cache_path, async_mode=False)
+            self.index_manager.set_wallpaper(self.current_picture, async_mode=False)
             
         except Exception as e:
             show_error(self.view, "错误", f"裁剪失败: {str(e)}")

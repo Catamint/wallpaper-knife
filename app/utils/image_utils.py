@@ -24,21 +24,25 @@ class ImageUtils:
             img.save(cache_path)
             return cache_path
         
-        elif width_ratio > 1 or height_ratio > 1:
+        elif wallpaperCfg.realesrganEnabled.value and (width_ratio > 1 or height_ratio > 1):
+            print("启用超分：", wallpaperCfg.realesrganEnabled.value)
             # 需要放大
             scale = int(max(width_ratio, height_ratio))
             scale = max(2, min(scale, 8))  # 限制在2-8之间
             scale = 4
             if ImageUtils.upscale(image_path, cache_path, scale):
+                print(f"超分辨率处理成功: {image_path} -> {cache_path}")
                 return cache_path
             else:
                 # 超分失败，采用普通缩放
                 img.save(cache_path)
+                print(f"超分辨率处理失败，使用普通缩放: {image_path}")
                 return cache_path
         
         else:
             # 不需要处理，直接保存副本
             img.save(cache_path)
+            print(f"图片已适合屏幕大小，无需处理: {image_path}")
             return cache_path
     
     def upscale(input_path, output_path, scale_factor):

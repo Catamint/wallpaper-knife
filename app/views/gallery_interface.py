@@ -10,25 +10,27 @@ from qfluentwidgets import (FluentIcon as FIF, NavigationItemPosition, CardWidge
                           setTheme, Theme, InfoBar, InfoBarPosition, FlowLayout, SearchLineEdit,
                           HyperlinkButton, TitleLabel, PushButton, ToolTipFilter,
                           PrimaryToolButton, TransparentPushButton, FluentStyleSheet,
-                          ElevatedCardWidget, ImageLabel, InfoBadge,SingleDirectionScrollArea)
+                          ElevatedCardWidget, ImageLabel, InfoBadge, SingleDirectionScrollArea)
 from .ThumbnailWidget import ThumbnailWidget
+from ..models.picture_item import Picture
+from typing import Dict, List, Optional, Union
 
 class GalleryInterface(QFrame):
     """图库界面 - 使用FlowLayout重构"""
     
-    # 定义信号
-    wallpaperSelected = pyqtSignal(str)  # 发送选中的壁纸文件名
-    excludeWallpaper = pyqtSignal(str)   # 排除壁纸
-    includeWallpaper = pyqtSignal(str)   # 恢复壁纸
+    # 定义信号 - 修改为传递Picture对象或key
+    wallpaperSelected = pyqtSignal(object)  # 发送选中的壁纸对象或key
+    excludeWallpaper = pyqtSignal(object)   # 排除壁纸
+    includeWallpaper = pyqtSignal(object)   # 恢复壁纸
     
     def __init__(self, controller, parent=None):
         super().__init__(parent=parent)
         self.controller = controller
         self.setObjectName("Gallery-Interface")
         
-        # 数据存储
-        self.wallpaper_data = {}  # 存储所有壁纸数据
-        self.excluded_files = set()  # 排除的壁纸
+        # 数据存储 - 修改为存储key与Picture对象的映射
+        self.wallpaper_data = {}  # 存储所有壁纸数据: {key: Picture对象}
+        self.excluded_files = set()  # 排除的壁纸key
         self.current_filter = "all"  # 当前筛选: all, included, excluded
         self.search_text = ""  # 搜索文本
         
@@ -81,7 +83,6 @@ class GalleryInterface(QFrame):
         # 刷新按钮
         self.refresh_button = PrimaryToolButton(FIF.SYNC)
         self.refresh_button.setToolTip("刷新图库")
-        # self.refresh_button.setFixedSize(36, 36)
         self.refresh_button.clicked.connect(self.refresh_gallery)
         
         # 添加控件到布局
@@ -124,7 +125,6 @@ class GalleryInterface(QFrame):
         
         # 添加加载指示器
         self.loading_widget = InfoBadge.success(1)
-        # self.loading_widget.setFixedSize(60, 60)
         self.loading_widget.hide()
     
         # 设置样式表
@@ -158,8 +158,8 @@ class GalleryInterface(QFrame):
         """连接信号到控制器"""
         try:
             # 连接壁纸选择信号
-            if hasattr(self.controller, 'select_wallpaper_from_gallery'):
-                self.wallpaperSelected.connect(self.controller.select_wallpaper_from_gallery)
+            if hasattr(self.controller, 'select_wallpaper'):
+                self.wallpaperSelected.connect(self.controller.select_wallpaper)
             
             # 连接排除壁纸信号
             if hasattr(self.controller, 'exclude_wallpaper'):
@@ -173,7 +173,11 @@ class GalleryInterface(QFrame):
             print(f"连接信号时出错: {e}")
     
     def set_data(self, wallpaper_data):
-        """设置壁纸数据"""
+        """设置壁纸数据
+        
+        Args:
+            wallpaper_data (dict): 壁纸数据字典 {key: Picture对象}
+        """
         try:
             # 检查是否实际接收到数据
             data_received = wallpaper_data is not None and len(wallpaper_data) > 0
@@ -187,9 +191,9 @@ class GalleryInterface(QFrame):
                 print(f"收到壁纸数据: {len(wallpaper_data)} 条")
                 self.wallpaper_data = wallpaper_data
                 
-                # 获取已排除的壁纸列表
-                self.excluded_files = {key for key, info in self.wallpaper_data.items() 
-                                      if not info.excluded}
+                # 获取已排除的壁纸列表 - 根据Picture对象的excluded属性
+                self.excluded_files = {key for key, pic in self.wallpaper_data.items() 
+                                      if pic.excluded}
                 print(f"已排除的壁纸: {len(self.excluded_files)} 个")
                 
             # 无论如何都刷新显示
@@ -204,9 +208,6 @@ class GalleryInterface(QFrame):
     def refresh_display(self):
         """刷新显示"""
         try:
-            # 显示加载指示器
-            # self.show_loading("正在加载...")
-            
             # 使用定时器延迟执行实际渲染，让UI有机会更新加载指示器
             QTimer.singleShot(50, lambda: self._perform_refresh_display())
             
@@ -214,7 +215,6 @@ class GalleryInterface(QFrame):
             print(f"刷新显示时出错: {e}")
             import traceback
             traceback.print_exc()
-            # self.hide_loading()
             self.show_error(f"刷新显示失败: {str(e)}")
 
     def _perform_refresh_display(self):
@@ -226,14 +226,10 @@ class GalleryInterface(QFrame):
             # 显示过滤后的数据
             self._display_wallpaper_data(filtered_data)
             
-            # 隐藏加载指示器
-            # self.hide_loading()
-            
         except Exception as e:
             print(f"执行刷新显示时出错: {e}")
             import traceback
             traceback.print_exc()
-            # self.hide_loading()
             self.show_error(f"刷新显示失败: {str(e)}")
         
     def _display_wallpaper_data(self, filtered_data):
@@ -283,8 +279,8 @@ class GalleryInterface(QFrame):
         """过滤壁纸数据"""
         filtered_data = {}
         
-        for filename, info in self.wallpaper_data.items():
-            is_excluded = info.excluded == True
+        for key, picture in self.wallpaper_data.items():
+            is_excluded = picture.excluded
             
             # 应用筛选
             filter_index = self.filter_combo.currentIndex()
@@ -295,12 +291,12 @@ class GalleryInterface(QFrame):
                 
             # 应用搜索
             if self.search_text:
-                display_name = info.get("display_name", filename)
+                display_name = picture.display_name
                 if (self.search_text.lower() not in display_name.lower() and 
-                    self.search_text.lower() not in filename.lower()):
+                    self.search_text.lower() not in key.lower()):
                     continue
             
-            filtered_data[filename] = info
+            filtered_data[key] = picture
         
         return filtered_data
     
@@ -332,9 +328,11 @@ class GalleryInterface(QFrame):
     
     def _populate_layout(self, sorted_items):
         """使用流布局填充缩略图"""
-        for filename, info in sorted_items:
-            is_excluded = info.excluded == True
-            thumbnail = ThumbnailWidget(filename, info, is_excluded=is_excluded)
+        for key, picture in sorted_items:
+            is_excluded = picture.excluded
+            
+            # 提供关键信息创建缩略图小部件
+            thumbnail = ThumbnailWidget(key, picture, is_excluded=is_excluded)
             
             # 连接缩略图信号 - 使用新的信号名
             thumbnail.itemClicked.connect(self._on_thumbnail_clicked)
@@ -371,14 +369,20 @@ class GalleryInterface(QFrame):
         # 立即执行刷新显示
         self.refresh_display()
     
-    def _on_thumbnail_clicked(self, filename):
-        """缩略图点击事件"""
+    def _on_thumbnail_clicked(self, key):
+        """缩略图点击事件
+        
+        Args:
+            key (str): 壁纸的键
+        """
         try:
-            # 高亮选中的缩略图
-            # self.highlight_item(filename)
+            # 获取对应的Picture对象
+            picture = self.wallpaper_data.get(key)
+            if not picture:
+                raise ValueError(f"找不到壁纸: {key}")
             
-            # 发送信号
-            self.wallpaperSelected.emit(filename)
+            # 发送信号 - 传递Picture对象
+            self.wallpaperSelected.emit(picture)
 
         except Exception as e:
             # 处理点击错误
@@ -393,20 +397,29 @@ class GalleryInterface(QFrame):
                 parent=self
             )
     
-    def _on_exclude_wallpaper(self, filename):
-        """将壁纸添加到排除列表"""
+    def _on_exclude_wallpaper(self, key):
+        """将壁纸添加到排除列表
+        
+        Args:
+            key (str): 壁纸的键
+        """
         try:
-            self.excluded_files.add(filename)
-            # 更新数据中的排除状态
-            if filename in self.wallpaper_data:
-                self.wallpaper_data[filename]["excluded"] = True
+            # 获取对应的Picture对象
+            picture = self.wallpaper_data.get(key)
+            if not picture:
+                raise ValueError(f"找不到壁纸: {key}")
             
-            self.excludeWallpaper.emit(filename)
+            # 更新排除状态
+            picture.set_excluded(True)
+            self.excluded_files.add(key)
+            
+            # 发送信号 - 传递Picture对象
+            self.excludeWallpaper.emit(picture)
             
             # 显示成功消息
             InfoBar.success(
                 title='操作成功',
-                content=f'已排除壁纸: {filename}',
+                content=f'已排除壁纸: {picture.display_name}',
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
@@ -421,20 +434,30 @@ class GalleryInterface(QFrame):
             print(f"排除壁纸时出错: {e}")
             self.show_error(f"排除壁纸失败: {str(e)}")
     
-    def _on_include_wallpaper(self, filename):
-        """将壁纸从排除列表移除"""
+    def _on_include_wallpaper(self, key):
+        """将壁纸从排除列表移除
+        
+        Args:
+            key (str): 壁纸的键
+        """
         try:
-           
-            # 更新数据中的排除状态
-            if filename in self.wallpaper_data:
-                self.wallpaper_data[filename]["excluded"] = False
+            # 获取对应的Picture对象
+            picture = self.wallpaper_data.get(key)
+            if not picture:
+                raise ValueError(f"找不到壁纸: {key}")
             
-            self.includeWallpaper.emit(filename)
+            # 更新排除状态
+            picture.set_excluded(False)
+            if key in self.excluded_files:
+                self.excluded_files.remove(key)
+            
+            # 发送信号 - 传递Picture对象
+            self.includeWallpaper.emit(picture)
             
             # 显示成功消息
             InfoBar.success(
                 title='操作成功',
-                content=f'已恢复壁纸: {filename}',
+                content=f'已恢复壁纸: {picture.display_name}',
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.BOTTOM_RIGHT,
@@ -452,9 +475,6 @@ class GalleryInterface(QFrame):
     def refresh_gallery(self):
         """异步刷新图库"""
         try:
-            # 显示加载指示器
-            # self.show_loading("正在刷新图库...")
-            
             # 获取当前筛选和搜索
             filter_names = ["all", "included", "excluded"]
             current_filter = filter_names[self.filter_combo.currentIndex()]
@@ -479,7 +499,6 @@ class GalleryInterface(QFrame):
             print(f"启动异步刷新时出错: {e}")
             import traceback
             traceback.print_exc()
-            # self.hide_loading()
             self.show_error(f"刷新图库失败: {str(e)}")
 
     def _on_refresh_complete(self, data):
@@ -490,14 +509,11 @@ class GalleryInterface(QFrame):
                 self.wallpaper_data = data
                 
                 # 获取已排除的壁纸列表
-                self.excluded_files = {key for key, info in self.wallpaper_data.items() 
-                                      if info.excluded == True}
+                self.excluded_files = {key for key, picture in self.wallpaper_data.items() 
+                                      if picture.excluded}
             
             # 刷新UI显示
             self._display_wallpaper_data(data)
-            
-            # 隐藏加载指示器
-            # self.hide_loading()
             
             # 显示成功消息
             InfoBar.success(
@@ -514,12 +530,10 @@ class GalleryInterface(QFrame):
             print(f"处理异步刷新结果时出错: {e}")
             import traceback
             traceback.print_exc()
-            # self.hide_loading()
             self.show_error(f"刷新图库失败: {str(e)}")
 
     def _on_refresh_error(self, error_message):
         """异步刷新出错回调"""
-        # self.hide_loading()
         self.show_error(f"刷新图库失败: {error_message}")
 
     def _on_refresh_progress(self, progress):
@@ -578,9 +592,6 @@ class GalleryInterface(QFrame):
         if not self.wallpaper_data or len(self.wallpaper_data) == 0:
             print("图库自动加载数据...")
             
-            # 显示加载指示器
-            # self.show_loading("正在加载壁纸数据...")
-            
             # 尝试使用控制器加载数据
             QTimer.singleShot(100, lambda: self._load_initial_data())
 
@@ -591,19 +602,14 @@ class GalleryInterface(QFrame):
                 self.controller.open_gallery()
             elif hasattr(self.controller, 'refresh_gallery'):
                 self.controller.refresh_gallery()
-            else:
-                # 如果控制器没有相关方法，隐藏加载指示器
-                # self.hide_loading()
-                pass
         except Exception as e:
             print(f"加载初始数据时出错: {e}")
-            # self.hide_loading()
             self.show_error(f"加载图库数据失败: {str(e)}")
             
 # 添加刷新线程类
 class GalleryRefreshThread(QThread):
     """异步刷新图库线程"""
-    finished = pyqtSignal(dict)  # 完成信号，传递刷新后的数据
+    finished = pyqtSignal(dict)  # 完成信号，传递刷新后的数据 {key: Picture}
     error = pyqtSignal(str)      # 错误信号
     progress = pyqtSignal(int)   # 进度信号
     
@@ -616,7 +622,7 @@ class GalleryRefreshThread(QThread):
     def run(self):
         """执行异步刷新"""
         try:
-            # 如果控制器有获取数据的方法
+            # 获取壁纸数据
             if hasattr(self.controller, 'get_wallpaper_data'):
                 wallpaper_data = self.controller.get_wallpaper_data()
                 
@@ -624,12 +630,12 @@ class GalleryRefreshThread(QThread):
                 filtered_data = {}
                 total = len(wallpaper_data)
                 
-                for i, (filename, info) in enumerate(wallpaper_data.items()):
+                for i, (key, picture) in enumerate(wallpaper_data.items()):
                     # 发送进度信号
                     self.progress.emit(int((i / total) * 100) if total > 0 else 0)
                     
-                    # 应用过滤规则 (如果数据量大，这部分可以移到主线程做)
-                    is_excluded = info.excluded == True
+                    # 应用过滤规则
+                    is_excluded = picture.excluded
                     
                     # 应用筛选
                     if self.filter_mode == "included" and is_excluded:  # 只显示已启用
@@ -639,12 +645,12 @@ class GalleryRefreshThread(QThread):
                         
                     # 应用搜索
                     if self.filter_text:
-                        display_name = info.get("display_name", filename)
+                        display_name = picture.display_name
                         if (self.filter_text.lower() not in display_name.lower() and 
-                            self.filter_text.lower() not in filename.lower()):
+                            self.filter_text.lower() not in key.lower()):
                             continue
                     
-                    filtered_data[filename] = info
+                    filtered_data[key] = picture
                 
                 # 发送完成信号
                 self.finished.emit(filtered_data)

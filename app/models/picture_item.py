@@ -7,9 +7,8 @@ from io import BytesIO
 class Picture:
     """图片对象，封装图片的所有属性和处理方法"""
     
-    def __init__(self, path: str, relative_path: str, file_hash: str, display_name: str = None):
+    def __init__(self, path: str, file_hash: str = None, display_name: str = None):
         self.path = path
-        self.relative_path = relative_path
         self.hash = file_hash
         self.display_name = display_name or os.path.basename(path)
         self.crop_region = None
@@ -25,7 +24,6 @@ class Picture:
         """从字典创建Picture对象"""
         pic = cls(
             path=data.get("path", ""),
-            relative_path=data.get("relative_path", ""),
             file_hash=data.get("hash", ""),
             display_name=data.get("display_name", "")
         )
@@ -41,8 +39,7 @@ class Picture:
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return {
-            "path": self.path,
-            "relative_path": self.relative_path, 
+            "path": self.path, 
             "hash": self.hash,
             "display_name": self.display_name,
             "crop_region": self.crop_region,
@@ -56,15 +53,16 @@ class Picture:
     # 根据文件名或
     def get_key(self) -> str:
         """生成唯一键"""
-        if not self.key:
+        key = getattr(self, 'key', None)
+        if not key:
             # 使用文件哈希和相对路径生成唯一键
-            self.key = f"{self.hash[:12]}_{os.path.basename(self.path)}"
-        return self.key
+            key = f"{self.hash[:12]}_{os.path.basename(self.path)}"
+            self.key = key
+        return key
     
-    def update_path(self, new_path: str, new_relative_path: str) -> None:
+    def update_path(self, new_path: str) -> None:
         """更新路径"""
         self.path = new_path
-        self.relative_path = new_relative_path
         self._modified = True
     
     def update_crop(self, crop_region: Dict[str, float], cache_path: str = None) -> None:
