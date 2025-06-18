@@ -51,10 +51,6 @@ def main():
         
         # 连接视图和控制器
         controller.set_view(view)
-        
-        # 初始化应用
-        if args.rebuild:
-            controller.rebuild_index()
             
         if controller.initialize():
             # 显示窗口

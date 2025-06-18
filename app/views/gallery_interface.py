@@ -598,9 +598,7 @@ class GalleryInterface(QFrame):
     def _load_initial_data(self):
         """加载初始数据"""
         try:
-            if hasattr(self.controller, 'open_gallery'):
-                self.controller.open_gallery()
-            elif hasattr(self.controller, 'refresh_gallery'):
+            if hasattr(self.controller, 'refresh_gallery'):
                 self.controller.refresh_gallery()
         except Exception as e:
             print(f"加载初始数据时出错: {e}")
@@ -623,8 +621,8 @@ class GalleryRefreshThread(QThread):
         """执行异步刷新"""
         try:
             # 获取壁纸数据
-            if hasattr(self.controller, 'get_wallpaper_data'):
-                wallpaper_data = self.controller.get_wallpaper_data()
+            if hasattr(self.controller, 'refresh_gallery'):
+                wallpaper_data = self.controller.refresh_gallery()
                 
                 # 过滤数据(如果需要)
                 filtered_data = {}
@@ -656,7 +654,7 @@ class GalleryRefreshThread(QThread):
                 self.finished.emit(filtered_data)
                 
             else:
-                self.error.emit("控制器没有提供 get_wallpaper_data 方法")
+                self.error.emit("控制器没有提供 refresh_gallery 方法")
                 
         except Exception as e:
             import traceback

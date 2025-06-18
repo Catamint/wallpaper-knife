@@ -105,21 +105,23 @@ class WallpaperController(QObject):
     
     @pyqtSlot()
     def refresh_index(self):
-        """刷新索引"""
-        if not self.rebuild_index():
-            return
-        
-        # 获取未排除的图片
-        filtered_pictures = self.index_manager.get_filtered_pictures(excluded=False)
-        
-        # 如果有壁纸，选择第一张
-        if filtered_pictures:
-            self.current_picture = filtered_pictures[0]
-            self.index_manager.set_wallpaper(self.current_picture, async_mode=False)
-            self.currentWallpaperChanged.emit(self.current_picture)
-            show_info(self.view, "完成", f"索引已刷新! 找到 {len(filtered_pictures)} 张可用壁纸")
-        else:
-            show_info(self.view, "提示", "未找到可用的壁纸!")
+        """异步刷新索引，完成后发送信号"""
+        def worker():
+            success = self.rebuild_index()
+            if not success:
+                return
+
+            filtered_pictures = self.index_manager.get_filtered_pictures(excluded=False)
+            if filtered_pictures:
+                self.current_picture = filtered_pictures[0]
+                self.index_manager.set_wallpaper(self.current_picture, async_mode=False)
+                self.currentWallpaperChanged.emit(self.current_picture)
+                self.indexingFinished.emit(success)
+            else:
+                # show_error(self.view, "错误", "没有可用的壁纸!")
+                self.indexingFinished.emit(False)
+
+        threading.Thread(target=worker, daemon=True).start()
     
     @pyqtSlot()
     def next_wallpaper(self):
@@ -266,13 +268,11 @@ class WallpaperController(QObject):
     def open_gallery(self):
         """打开图库视图"""
         # 获取所有壁纸数据
-        wallpaper_data = self.get_wallpaper_data()
+        wallpaper_data = self._get_wallpaper_data()
         
         # 通知视图打开图库
         if hasattr(self.view, "show_gallery"):
             self.view.show_gallery(wallpaper_data)
-        elif hasattr(self.view, "galleryInterface"):
-            self.view.galleryInterface.set_data(wallpaper_data)
 
     @pyqtSlot(str)
     @pyqtSlot(object)  # 添加对象类型的重载
@@ -482,12 +482,11 @@ class WallpaperController(QObject):
     def refresh_gallery(self):
         """刷新图库"""
         # 使用新方法获取壁纸数据
-        wallpaper_data = self.get_wallpaper_data()
+        wallpaper_data = self._get_wallpaper_data()
         
         # 检查是否有数据
         if not wallpaper_data:
             print("没有可用的壁纸数据")
-            
             # 显示错误提示
             if self.view:
                 InfoBar.error(
@@ -499,12 +498,15 @@ class WallpaperController(QObject):
                     duration=3000,
                     parent=self.view
                 )
-        
+
         # 更新图库数据
         if hasattr(self.view, "galleryInterface"):
             self.view.galleryInterface.set_data(wallpaper_data)
 
-    def get_wallpaper_data(self):
+        return wallpaper_data
+
+
+    def _get_wallpaper_data(self):
         """获取所有壁纸数据
     
         Returns:

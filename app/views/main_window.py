@@ -46,6 +46,7 @@ class WallpaperMainWindow(FluentWindow):
         if hasattr(self.homeInterface, 'cropRequested'):
             self.homeInterface.cropRequested.connect(self.handle_crop_request)
         self.controller.currentWallpaperChanged.connect(self.update_wallpaper)
+        self.controller.indexingFinished.connect(self.on_indexing_finished)
         
     def handle_crop_request(self, crop_rect):
         """处理裁剪请求"""
@@ -111,24 +112,34 @@ class WallpaperMainWindow(FluentWindow):
     def safe_refresh_index(self):
         """安全的刷新索引方法"""
         try:
-            if hasattr(self.controller, 'refresh_index'):
-                self.controller.refresh_index()
-            elif hasattr(self.controller, 'rebuild_index'):
-                self.controller.rebuild_index()
-            else:
-                InfoBar.warning(
-                    title='功能未实现',
-                    content='刷新索引功能未实现',
-                    orient=Qt.Orientation.Horizontal,
-                    isClosable=True,
-                    position=InfoBarPosition.TOP_RIGHT,
-                    duration=3000,
-                    parent=self
-                )
+            self.controller.refresh_index()
         except Exception as e:
             InfoBar.error(
                 title='错误',
                 content=f'刷新索引时出错: {str(e)}',
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=5000,
+                parent=self
+            )
+
+    def on_indexing_finished(self, success=True, message=""):
+        """索引完成后显示结果Bar"""
+        if success:
+            InfoBar.success(
+                title='索引完成',
+                content=message or '壁纸索引已刷新完成',
+                orient=Qt.Orientation.Horizontal,
+                isClosable=True,
+                position=InfoBarPosition.TOP_RIGHT,
+                duration=3000,
+                parent=self
+            )
+        else:
+            InfoBar.error(
+                title='索引失败',
+                content=message or '壁纸索引刷新失败',
                 orient=Qt.Orientation.Horizontal,
                 isClosable=True,
                 position=InfoBarPosition.TOP_RIGHT,
@@ -167,9 +178,8 @@ class WallpaperMainWindow(FluentWindow):
         display_name = info.display_name
         self.setWindowTitle(f"壁纸刀 - {display_name}")
     
-    def show_gallery(self, wallpaper_data):
+    def show_gallery(self):
         """显示图库数据"""
-        self.galleryInterface.set_data(wallpaper_data)
         self.stackedWidget.setCurrentWidget(self.galleryInterface)
     
     def close_gallery(self):
